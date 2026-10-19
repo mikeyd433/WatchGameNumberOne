@@ -5,6 +5,12 @@ on:
   pull_request:
   workflow_dispatch:
 
+# A newer push cancels older runs on the same branch, so an old build can never
+# finish last and overwrite the "latest" release.
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
