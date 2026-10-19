@@ -26,13 +26,15 @@ jobs:
       - name: Core unit tests
         run: ./gradlew :core:test
 
-      - name: Build debug APK
-        run: ./gradlew :app:assembleDebug
+      # Release build: optimized and much faster on the watch. Signed with the
+      # shared debug key, so it installs over any earlier build.
+      - name: Build APK
+        run: ./gradlew :app:assembleRelease
 
       - uses: actions/upload-artifact@v4
         with:
-          name: bezel-town-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          name: bezel-town-apk
+          path: app/build/outputs/apk/release/*.apk
 
       # Every main build replaces the "latest" release, so this link always
       # serves the newest APK:
@@ -42,10 +44,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk bezel-town.apk
+          cp app/build/outputs/apk/release/app-release.apk bezel-town.apk
           version="0.1.$(git rev-list --count HEAD)"
           gh release delete latest --cleanup-tag --yes || true
           gh release create latest bezel-town.apk \
             --target "$GITHUB_SHA" \
             --title "Latest build ($version)" \
-            --notes "Debug build of $(git rev-parse --short HEAD): $(git log -1 --format=%s)"
+            --notes "Build of $(git rev-parse --short HEAD): $(git log -1 --format=%s)"

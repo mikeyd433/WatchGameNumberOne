@@ -8,8 +8,9 @@ Wear OS incremental game. See README.md for layout and docs/SPEC.md for the desi
   to `main` directly (merge any session branch into `main` and push), rather than
   stopping at a feature branch or opening a pull request. The owner has approved
   this as the standing default.
-- Before pushing to `main`, run `./gradlew :core:test :app:assembleDebug` and make
-  sure it passes.
+- Before pushing to `main`, run `./gradlew :core:test :app:assembleRelease` and
+  make sure it passes. The release APK is the one to send to the owner: it is much
+  faster on the watch than the debug build.
 
 ## Building
 

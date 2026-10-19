@@ -29,6 +29,9 @@ android {
         targetSdk = 34
         versionCode = commitCount
         versionName = "0.1.$commitCount"
+
+        // Wear OS watches are ARM; skipping x86 roughly halves the native code shipped.
+        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }
 
     signingConfigs {
@@ -44,8 +47,12 @@ android {
     }
 
     buildTypes {
+        // The build to put on the watch: R8-optimized, non-debuggable and shipped
+        // with the libraries' startup profiles, so Compose and the game run
+        // much faster than the debug build.
         release {
             isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             // Sideloaded for now; sign with the debug key so release builds install too.
             signingConfig = signingConfigs.getByName("debug")

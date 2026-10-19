@@ -55,12 +55,14 @@ All the knobs are in `render/RetroLook.kt`.
 Open in Android Studio, or:
 
 ```
-./gradlew :core:test          # game logic tests, any JVM
-./gradlew :app:assembleDebug  # needs the Android SDK
-adb install app/build/outputs/apk/debug/app-debug.apk
+./gradlew :core:test            # game logic tests, any JVM
+./gradlew :app:assembleRelease  # needs the Android SDK
+adb install -r app/build/outputs/apk/release/app-release.apk
 ```
 
-GitHub Actions builds the debug APK on every push. Every build of `main` is also
+GitHub Actions builds the release APK on every push. Use release builds on the
+watch: they're optimized and much faster than debug builds, and they're signed
+with the same shared key so they install over each other. Every build of `main` is also
 published as the `latest` release, so this link always serves the newest APK:
 
 https://github.com/mikeyd433/WatchGameNumberOne/releases/download/latest/bezel-town.apk

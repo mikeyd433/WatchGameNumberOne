@@ -10,6 +10,7 @@ import com.google.android.filament.EntityManager
 import com.google.android.filament.IndexBuffer
 import com.google.android.filament.RenderTarget
 import com.google.android.filament.RenderableManager
+import com.google.android.filament.Renderer
 import com.google.android.filament.SwapChain
 import com.google.android.filament.Texture
 import com.google.android.filament.TextureSampler
@@ -95,6 +96,12 @@ class FilamentHost(
             .receiveShadows(false)
             .build(engine, quadEntity)
         screenScene.addEntity(quadEntity)
+
+        // Clearing lets the watch's tile-based GPU skip reloading last frame from memory.
+        renderer.clearOptions = Renderer.ClearOptions().apply {
+            clear = true
+            discard = true
+        }
 
         uiHelper.renderCallback = this
         uiHelper.attachTo(textureView)

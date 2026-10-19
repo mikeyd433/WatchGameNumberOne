@@ -21,9 +21,12 @@ material {
 vertex {
     void materialVertex(inout MaterialVertexInputs material) {
         vec4 clip = getClipFromWorldMatrix() * material.worldPosition;
-        vec2 grid = materialParams.snapGrid;
-        clip.xy = floor(clip.xy / clip.w * grid + 0.5) / grid * clip.w;
-        material.worldPosition = getWorldFromClipMatrix() * clip;
+        // Dividing by w near or behind the camera would blow up; leave those alone.
+        if (clip.w > 0.001) {
+            vec2 grid = materialParams.snapGrid;
+            clip.xy = floor(clip.xy / clip.w * grid + 0.5) / grid * clip.w;
+            material.worldPosition = getWorldFromClipMatrix() * clip;
+        }
     }
 }
 

@@ -138,7 +138,8 @@ class OverworldScene(engine: Engine, private val walker: Walker) :
 
         for (slot in 0 until SLOT_COUNT) {
             val p = this.camera.project(slotX(slot), LABEL_Y[slot], BUILDING_Z, viewportWidth, viewportHeight)
-            labelPositions[slot] = p?.let { Offset(it.first, it.second) }
+            val offset = p?.let { Offset(it.first, it.second) }
+            if (labelPositions[slot] != offset) labelPositions[slot] = offset
         }
     }
 

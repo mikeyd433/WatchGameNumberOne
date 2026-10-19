@@ -210,25 +210,8 @@ fun BuildingScreen(
                 color = Gold,
                 modifier = Modifier.align(Alignment.Center),
             )
-            Phase.PLAYING -> {
-                frame // read so the overlay redraws every frame
-                val g = game ?: return@Box
-                EdgeArc(progress = g.timeLeftFraction, color = Gold, startAngle = 270f, sweep = 360f, strokeWidth = 6f)
-                val status = when (g) {
-                    is KneadGame -> "${g.kneads}/${KneadGame.TARGET_KNEADS}"
-                    else -> "${(g.progress * 100).roundToInt()}%"
-                }
-                BottomCurvedText(status)
-                if (g is PumpGame && g.spraying) {
-                    Text(
-                        text = "TOO FAST!",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Black,
-                        color = Warn,
-                        modifier = Modifier.align(Alignment.TopCenter).padding(top = 36.dp),
-                    )
-                }
-            }
+            // Only the overlay reads the per-frame counter, so only it recomposes each frame.
+            Phase.PLAYING -> game?.let { PlayingOverlay(it, frame = { frame }) }
             Phase.RESULT -> {
                 val g = game
                 val result = outcome
@@ -249,6 +232,29 @@ fun BuildingScreen(
                     },
                 )
             }
+        }
+    }
+}
+
+/** Timer ring, progress and warnings while a microgame runs. Redrawn every frame. */
+@Composable
+private fun PlayingOverlay(g: Microgame, frame: () -> Int) {
+    frame()
+    EdgeArc(progress = g.timeLeftFraction, color = Gold, startAngle = 270f, sweep = 360f, strokeWidth = 6f)
+    val status = when (g) {
+        is KneadGame -> "${g.kneads}/${KneadGame.TARGET_KNEADS}"
+        else -> "${(g.progress * 100).roundToInt()}%"
+    }
+    BottomCurvedText(status)
+    if (g is PumpGame && g.spraying) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+            Text(
+                text = "TOO FAST!",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Black,
+                color = Warn,
+                modifier = Modifier.padding(top = 36.dp),
+            )
         }
     }
 }

@@ -52,7 +52,8 @@ class Mesh(
  */
 class MeshBuilder(seed: Int = 1) {
     private val random = java.util.Random(seed.toLong())
-    private val data = ArrayList<Float>()
+    private var data = FloatArray(28 * 64)
+    private var size = 0
     private var vertexCount = 0
     private var minX = Float.MAX_VALUE; private var minY = Float.MAX_VALUE; private var minZ = Float.MAX_VALUE
     private var maxX = -Float.MAX_VALUE; private var maxY = -Float.MAX_VALUE; private var maxZ = -Float.MAX_VALUE
@@ -64,9 +65,10 @@ class MeshBuilder(seed: Int = 1) {
         val grime = 1f + (random.nextFloat() * 2f - 1f) * RetroLook.FACE_GRIME
         val shade = (AMBIENT + DIFFUSE * max(0f, n.dot(SUN))) * grime
         val lit = color.scaled(shade)
+        if (size + 21 > data.size) data = data.copyOf(data.size * 2)
         for (p in arrayOf(a, b, c)) {
-            data.add(p.x); data.add(p.y); data.add(p.z)
-            data.add(lit.r); data.add(lit.g); data.add(lit.b); data.add(1f)
+            data[size++] = p.x; data[size++] = p.y; data[size++] = p.z
+            data[size++] = lit.r; data[size++] = lit.g; data[size++] = lit.b; data[size++] = 1f
             minX = min(minX, p.x); minY = min(minY, p.y); minZ = min(minZ, p.z)
             maxX = max(maxX, p.x); maxY = max(maxY, p.y); maxZ = max(maxZ, p.z)
             vertexCount++
@@ -196,9 +198,8 @@ class MeshBuilder(seed: Int = 1) {
 
     fun build(engine: Engine): Mesh {
         check(vertexCount in 1..65535) { "mesh has $vertexCount vertices" }
-        val vertices = ByteBuffer.allocateDirect(data.size * 4).order(ByteOrder.nativeOrder())
-        for (f in data) vertices.putFloat(f)
-        vertices.flip()
+        val vertices = ByteBuffer.allocateDirect(size * 4).order(ByteOrder.nativeOrder())
+        vertices.asFloatBuffer().put(data, 0, size)
 
         val indices = ByteBuffer.allocateDirect(vertexCount * 2).order(ByteOrder.nativeOrder())
         for (i in 0 until vertexCount) indices.putShort(i.toShort())
