@@ -1,0 +1,35 @@
+// Draws the low-resolution frame onto the screen with hard-edged pixels,
+// cutting it down to 15-bit color with 4x4 ordered dithering, as the PS1 did.
+// Used on a full-screen quad whose positions are already in clip space.
+material {
+    name : retro_blit,
+    shadingModel : unlit,
+    vertexDomain : device,
+    culling : none,
+    depthWrite : false,
+    depthCulling : false,
+    parameters : [
+        { type : sampler2d, name : frame, precision : medium },
+        { type : float2, name : frameSize }
+    ]
+}
+
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+        vec2 uv = getNormalizedViewportCoord().xy;
+        vec3 c = texture(materialParams_frame, uvToRenderTargetUV(uv)).rgb;
+
+        ivec2 p = ivec2(uv * materialParams.frameSize) & 3;
+        int i = p.y * 4 + p.x;
+        const float bayer[16] = float[16](
+             0.0,  8.0,  2.0, 10.0,
+            12.0,  4.0, 14.0,  6.0,
+             3.0, 11.0,  1.0,  9.0,
+            15.0,  7.0, 13.0,  5.0);
+        float dither = (bayer[i] + 0.5) / 16.0;
+        c = floor(c * 31.0 + dither) / 31.0;
+
+        material.baseColor = vec4(c, 1.0);
+    }
+}

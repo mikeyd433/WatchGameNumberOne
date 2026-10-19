@@ -3,6 +3,7 @@ package com.mikeyd.bezeltown.render.scenes
 import com.google.android.filament.Camera
 import com.google.android.filament.Engine
 import com.mikeyd.bezeltown.core.microgame.PumpGame
+import com.mikeyd.bezeltown.render.Fog
 import com.mikeyd.bezeltown.render.LinearColor.Companion.srgb
 import com.mikeyd.bezeltown.render.MeshBuilder
 import com.mikeyd.bezeltown.render.ProjectingCamera
@@ -13,7 +14,7 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 /** The water tower up close: an open-staved tank you can see filling, and the crank pump. */
-class WaterTowerScene(engine: Engine) : MicrogameScene(engine, srgb(0x9ED8F0)) {
+class WaterTowerScene(engine: Engine) : MicrogameScene(engine, srgb(0x6A5A9E), Fog(near = 7f, far = 16f)) {
     private val camera = ProjectingCamera()
     private val water: Int
     private val wheel: Int

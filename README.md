@@ -37,9 +37,18 @@ it yet), particles, the arcade cabinet, the gatekeeper's crank payment, tokens.
 - `app/` – Wear OS app: Compose for Wear OS UI, Filament scenes, input, haptics.
   - `render/` – Filament engine, procedural low-poly mesh builder, scene base.
   - `render/scenes/` – the overworld street and each building interior.
-  - `app/src/main/materials/flat.mat` – the one material (unlit, vertex colors;
-    lighting is baked into vertex colors on the CPU). Compiled to
-    `app/src/main/assets/materials/flat.filamat`.
+  - `app/src/main/materials/` – Filament materials, compiled into
+    `app/src/main/assets/materials/`. `flat.mat` draws everything (unlit, vertex
+    colors with lighting baked in on the CPU, plus vertex snapping and fog);
+    `retro_blit.mat` puts the low-resolution frame on screen.
+
+## Look: PS1 retro
+
+Scenes render at a third of the screen's resolution into an offscreen texture,
+then get drawn full-screen with hard pixels, 15-bit color and ordered dithering.
+Vertices snap to a coarse screen grid (the PS1 wobble), distant things fade into
+fog, faces get a little random brightness grime, and drawing is capped at 30 fps.
+All the knobs are in `render/RetroLook.kt`.
 
 ## Building
 

@@ -16,13 +16,15 @@ object FilamentRuntime {
     private var engine: Engine? = null
     lateinit var flatMaterial: Material
         private set
+    lateinit var retroBlitMaterial: Material
+        private set
 
     fun engine(context: Context): Engine {
         engine?.let { return it }
         Filament.init()
         val created = Engine.create()
         flatMaterial = loadMaterial(created, context, "materials/flat.filamat")
-        flatMaterial.defaultInstance.setParameter("tint", 1f, 1f, 1f, 1f)
+        retroBlitMaterial = loadMaterial(created, context, "materials/retro_blit.filamat")
         engine = created
         return created
     }

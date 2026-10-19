@@ -43,12 +43,15 @@ class Mesh(
 /**
  * Builds flat-shaded low-poly meshes out of simple shapes. Every triangle gets
  * its own vertices so faces stay hard-edged, and a fixed sun direction is baked
- * into the vertex colors, so the material can stay unlit.
+ * into the vertex colors, so the material can stay unlit. Each face also gets a
+ * small random brightness change ([RetroLook.FACE_GRIME]), seeded so a mesh
+ * looks the same every time it's built.
  *
  * Shapes take an "outward" reference point; faces are oriented away from it
  * for lighting, so winding order never matters.
  */
-class MeshBuilder {
+class MeshBuilder(seed: Int = 1) {
+    private val random = java.util.Random(seed.toLong())
     private val data = ArrayList<Float>()
     private var vertexCount = 0
     private var minX = Float.MAX_VALUE; private var minY = Float.MAX_VALUE; private var minZ = Float.MAX_VALUE
@@ -58,7 +61,8 @@ class MeshBuilder {
         var n = (b - a).cross(c - a).normalized()
         val centroid = (a + b + c) * (1f / 3f)
         if (n.dot(centroid - outwardFrom) < 0f) n = n * -1f
-        val shade = AMBIENT + DIFFUSE * max(0f, n.dot(SUN))
+        val grime = 1f + (random.nextFloat() * 2f - 1f) * RetroLook.FACE_GRIME
+        val shade = (AMBIENT + DIFFUSE * max(0f, n.dot(SUN))) * grime
         val lit = color.scaled(shade)
         for (p in arrayOf(a, b, c)) {
             data.add(p.x); data.add(p.y); data.add(p.z)

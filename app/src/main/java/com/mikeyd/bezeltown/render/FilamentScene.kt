@@ -12,8 +12,15 @@ import com.google.android.filament.Skybox
 /**
  * Owns a Filament scene and everything in it. Subclasses build their meshes in
  * init and animate them in [onFrame]; [FilamentHost] drives the frame loop.
+ *
+ * Every material instance belongs to the scene, so per-scene settings (fog,
+ * vertex snapping) never leak into another scene rendering at the same time.
  */
-abstract class FilamentScene(protected val engine: Engine, skyColor: LinearColor) {
+abstract class FilamentScene(
+    protected val engine: Engine,
+    private val skyColor: LinearColor,
+    private val fog: Fog,
+) {
     val scene: Scene = engine.createScene()
 
     /** Called once per rendered frame before drawing, with seconds since the last frame. */
@@ -29,9 +36,15 @@ abstract class FilamentScene(protected val engine: Engine, skyColor: LinearColor
     private val entities = mutableListOf<Int>()
     private val materialInstances = mutableListOf<MaterialInstance>()
     private val scratch = FloatArray(16)
+    private var snapX = 1000f
+    private var snapY = 1000f
+
+    /** The untinted material most meshes use. */
+    protected val baseMaterial: MaterialInstance
 
     init {
         scene.skybox = skybox
+        baseMaterial = tintedMaterial()
     }
 
     abstract fun configureCamera(camera: Camera)
@@ -43,10 +56,23 @@ abstract class FilamentScene(protected val engine: Engine, skyColor: LinearColor
         viewportHeight = height
     }
 
+    /**
+     * Sets how coarse the vertex snapping is, from the size the scene is
+     * rendered at. Called by [FilamentHost] whenever that changes.
+     */
+    fun setRenderResolution(width: Int, height: Int) {
+        snapX = width * RetroLook.SNAP_FRACTION / 2f
+        snapY = height * RetroLook.SNAP_FRACTION / 2f
+        materialInstances.forEach { it.setParameter("snapGrid", snapX, snapY) }
+    }
+
     /** A material instance that multiplies everything drawn with it by [tint]. */
     protected fun tintedMaterial(tint: LinearColor = LinearColor(1f, 1f, 1f)): MaterialInstance =
         FilamentRuntime.flatMaterial.createInstance().also {
             setTint(it, tint)
+            it.setParameter("snapGrid", snapX, snapY)
+            it.setParameter("fogColor", skyColor.r, skyColor.g, skyColor.b)
+            it.setParameter("fogRange", fog.near, fog.far)
             materialInstances += it
         }
 
@@ -64,7 +90,7 @@ abstract class FilamentScene(protected val engine: Engine, skyColor: LinearColor
 
     protected fun addMesh(
         builder: MeshBuilder,
-        material: MaterialInstance = FilamentRuntime.flatMaterial.defaultInstance,
+        material: MaterialInstance = baseMaterial,
         parent: Int? = null,
     ): Int {
         val mesh = builder.build(engine).also { meshes += it }

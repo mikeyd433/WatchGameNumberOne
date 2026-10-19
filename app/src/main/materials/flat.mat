@@ -1,19 +1,40 @@
-// Unlit material for the low-poly look. Lighting is baked into vertex colors on
-// the CPU (see MeshBuilder), so the GPU only multiplies color by a tint.
-// `tint` dims locked buildings into silhouettes and recolors the dough.
+// Unlit material for the PS1-style look. Lighting is baked into vertex colors on
+// the CPU (see MeshBuilder), so the GPU only tints, snaps and fogs.
+//
+// - tint: dims locked buildings into silhouettes and recolors the dough.
+// - snapGrid: vertices snap to a grid this many cells across each half of the
+//   screen, which gives the PS1 "wobble" as things move.
+// - fogColor / fogRange: linear fog by distance from the camera (near, far).
 material {
     name : flat_vertex_color,
     shadingModel : unlit,
     culling : none,
     requires : [ color ],
     parameters : [
-        { type : float4, name : tint }
+        { type : float4, name : tint },
+        { type : float2, name : snapGrid },
+        { type : float3, name : fogColor },
+        { type : float2, name : fogRange }
     ]
+}
+
+vertex {
+    void materialVertex(inout MaterialVertexInputs material) {
+        vec4 clip = getClipFromWorldMatrix() * material.worldPosition;
+        vec2 grid = materialParams.snapGrid;
+        clip.xy = floor(clip.xy / clip.w * grid + 0.5) / grid * clip.w;
+        material.worldPosition = getWorldFromClipMatrix() * clip;
+    }
 }
 
 fragment {
     void material(inout MaterialInputs material) {
         prepareMaterial(material);
-        material.baseColor = getColor() * materialParams.tint;
+        vec4 color = getColor() * materialParams.tint;
+        float d = distance(getWorldPosition(), getWorldCameraPosition());
+        vec2 range = materialParams.fogRange;
+        float fog = clamp((d - range.x) / max(range.y - range.x, 0.001), 0.0, 1.0);
+        color.rgb = mix(color.rgb, materialParams.fogColor, fog);
+        material.baseColor = color;
     }
 }

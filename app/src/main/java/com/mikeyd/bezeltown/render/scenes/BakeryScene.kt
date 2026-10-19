@@ -3,6 +3,7 @@ package com.mikeyd.bezeltown.render.scenes
 import com.google.android.filament.Camera
 import com.google.android.filament.Engine
 import com.mikeyd.bezeltown.core.microgame.KneadGame
+import com.mikeyd.bezeltown.render.Fog
 import com.mikeyd.bezeltown.render.LinearColor.Companion.srgb
 import com.mikeyd.bezeltown.render.MeshBuilder
 import com.mikeyd.bezeltown.render.ProjectingCamera
@@ -13,7 +14,8 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 /** Bakery counter with a lump of dough in the middle. */
-class BakeryScene(engine: Engine) : MicrogameScene(engine, srgb(0xE9C79A)) {
+// Dim and warm: the back of the kitchen fades into the dark.
+class BakeryScene(engine: Engine) : MicrogameScene(engine, srgb(0x4A2E22), Fog(near = 3.6f, far = 8f)) {
     private val camera = ProjectingCamera()
     private val doughMaterial = tintedMaterial(PALE)
     private val dough: Int

@@ -7,6 +7,7 @@ import com.google.android.filament.Engine
 import com.google.android.filament.MaterialInstance
 import com.mikeyd.bezeltown.core.overworld.Walker
 import com.mikeyd.bezeltown.render.FilamentScene
+import com.mikeyd.bezeltown.render.Fog
 import com.mikeyd.bezeltown.render.LinearColor
 import com.mikeyd.bezeltown.render.LinearColor.Companion.srgb
 import com.mikeyd.bezeltown.render.MeshBuilder
@@ -24,7 +25,9 @@ data class BuildingVisual(val unlocked: Boolean, val activity: Float)
  * The Small Town street: arcade cabinet, five buildings, and the gatekeeper's
  * portal in a row, with the tiny walker in front.
  */
-class OverworldScene(engine: Engine, private val walker: Walker) : FilamentScene(engine, srgb(0x9ED8F0)) {
+// Dusk sky; distant hills fade into it.
+class OverworldScene(engine: Engine, private val walker: Walker) :
+    FilamentScene(engine, srgb(0x6A5A9E), Fog(near = 11f, far = 22f)) {
     /** Screen positions of each slot's label, refreshed every frame. Null when off screen. */
     val labelPositions = mutableStateListOf<Offset?>().apply { repeat(SLOT_COUNT) { add(null) } }
 
