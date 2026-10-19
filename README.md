@@ -51,8 +51,22 @@ Open in Android Studio, or:
 adb install app/build/outputs/apk/debug/app-debug.apk
 ```
 
-GitHub Actions builds the debug APK on every push and attaches it to the run as
-`bezel-town-debug-apk`.
+GitHub Actions builds the debug APK on every push. Every build of `main` is also
+published as the `latest` release, so this link always serves the newest APK:
+
+https://github.com/mikeyd433/WatchGameNumberOne/releases/download/latest/bezel-town.apk
+
+## Installing on the watch from an Android phone
+
+1. On the watch: Settings → About watch → Software information → tap Software
+   version ~5 times. Then Developer options → turn on ADB debugging and Wireless
+   debugging (watch and phone on the same Wi-Fi).
+2. On the phone, install Wear Installer 2 (or Bugjaeger) and pair it with the
+   watch using the code from Wireless debugging → Pair new device. Once only.
+3. Download the APK from the link above and install it with the app.
+
+All builds are signed with the committed `app/debug.keystore`, and `versionCode`
+is the commit count, so each new build installs over the last and keeps your save.
 
 If you edit `flat.mat`, recompile it with `tools/build-materials.sh` using `matc`
 from the **same** Filament release as `filament` in `gradle/libs.versions.toml`.

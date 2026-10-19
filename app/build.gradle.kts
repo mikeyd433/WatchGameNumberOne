@@ -1,10 +1,22 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.io.ByteArrayOutputStream
 
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 }
+
+// Commit count on main only goes up, so every build installs over the last one
+// whether it came from CI or a local build.
+val commitCount: Int = runCatching {
+    val out = ByteArrayOutputStream()
+    project.exec {
+        commandLine("git", "rev-list", "--count", "HEAD")
+        standardOutput = out
+    }
+    out.toString().trim().toInt()
+}.getOrDefault(1)
 
 android {
     namespace = "com.mikeyd.bezeltown"
@@ -15,8 +27,20 @@ android {
         // Wear OS 3, the oldest OS the Galaxy Watch 4 shipped with.
         minSdk = 30
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = commitCount
+        versionName = "0.1.$commitCount"
+    }
+
+    signingConfigs {
+        // A shared, committed debug key: every build (CI or local) is signed the
+        // same way, so updates install over each other and keep the save.
+        // It's a throwaway debug key, not a release key.
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
 
     buildTypes {
