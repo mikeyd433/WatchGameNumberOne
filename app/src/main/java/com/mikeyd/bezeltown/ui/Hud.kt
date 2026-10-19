@@ -19,7 +19,7 @@ import androidx.wear.compose.foundation.CurvedLayout
 import androidx.wear.compose.foundation.CurvedModifier
 import androidx.wear.compose.foundation.CurvedTextStyle
 import androidx.wear.compose.foundation.background
-import androidx.wear.compose.foundation.curvedText
+import androidx.wear.compose.foundation.basicCurvedText
 import androidx.wear.compose.foundation.padding
 import kotlin.math.roundToInt
 
@@ -32,7 +32,7 @@ val Good = Color(0xFF7CFFB2)
 @Composable
 fun TopCurvedText(text: String, color: Color = Color.White) {
     CurvedLayout(modifier = Modifier.fillMaxSize().padding(2.dp), anchor = 270f) {
-        curvedText(
+        basicCurvedText(
             text = text,
             modifier = CurvedModifier.background(Ink.copy(alpha = 0.55f), StrokeCap.Round).padding(angular = 6.dp, radial = 2.dp),
             style = CurvedTextStyle(fontSize = 15.sp, color = color, fontWeight = FontWeight.Bold),
@@ -48,7 +48,7 @@ fun BottomCurvedText(text: String, color: Color = Color.White) {
         anchor = 90f,
         angularDirection = CurvedDirection.Angular.CounterClockwise,
     ) {
-        curvedText(
+        basicCurvedText(
             text = text,
             modifier = CurvedModifier.background(Ink.copy(alpha = 0.55f), StrokeCap.Round).padding(angular = 6.dp, radial = 2.dp),
             style = CurvedTextStyle(fontSize = 12.sp, color = color),
