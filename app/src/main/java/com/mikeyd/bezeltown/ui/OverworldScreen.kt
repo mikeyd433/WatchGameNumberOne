@@ -1,0 +1,215 @@
+package com.mikeyd.bezeltown.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.rotary.onRotaryScrollEvent
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.wear.compose.foundation.ExperimentalWearFoundationApi
+import androidx.wear.compose.foundation.rememberActiveFocusRequester
+import androidx.wear.compose.material.Text
+import com.mikeyd.bezeltown.GameViewModel
+import com.mikeyd.bezeltown.core.economy.Economy
+import com.mikeyd.bezeltown.core.format.BigNumber
+import com.mikeyd.bezeltown.core.model.BuildingId
+import com.mikeyd.bezeltown.core.model.GameState
+import com.mikeyd.bezeltown.core.overworld.Walker
+import com.mikeyd.bezeltown.input.BezelDetents
+import com.mikeyd.bezeltown.render.FilamentSurface
+import com.mikeyd.bezeltown.render.scenes.BuildingVisual
+import com.mikeyd.bezeltown.render.scenes.OverworldScene
+import kotlinx.coroutines.delay
+import kotlin.math.roundToInt
+
+private const val ARCADE_SLOT = 0
+private const val GATE_SLOT = 6
+
+@OptIn(ExperimentalWearFoundationApi::class)
+@Composable
+fun OverworldScreen(
+    state: GameState,
+    viewModel: GameViewModel,
+    onEnter: (BuildingId) -> Unit,
+) {
+    val context = LocalContext.current
+    val setting = viewModel.setting(state)
+    val walker = viewModel.walker
+    val haptics = viewModel.haptics
+    val detents = remember { BezelDetents(context) }
+    val focusRequester = rememberActiveFocusRequester()
+
+    var scene by remember { mutableStateOf<OverworldScene?>(null) }
+    // Bumped when the walker reaches or leaves a doorway, so the hint updates.
+    var doorSlot by remember { mutableIntStateOf(walker.doorSlot ?: -1) }
+    var message by remember { mutableStateOf<String?>(null) }
+
+    fun onWalkEvent(event: Walker.Event) {
+        when (event) {
+            Walker.Event.Step -> haptics.tick()
+            is Walker.Event.Doorway -> haptics.click()
+        }
+    }
+
+    val income = Economy.totalIncome(state, setting)
+    val visuals = setting.buildings.map { def ->
+        val b = state.building(def.id)
+        val rate = Economy.incomePerSecond(def, b.automationLevel, state.totalBonus)
+        BuildingVisual(unlocked = b.unlocked, activity = (rate / (def.incomePerLevel * 10).coerceAtLeast(1e-9)).toFloat().coerceIn(0f, 1f))
+    }
+    SideEffect { scene?.setBuildings(visuals) }
+
+    fun buildingAt(slot: Int): BuildingId? = setting.buildings.getOrNull(slot - 1)?.id
+
+    fun onTap() {
+        val slot = walker.doorSlot ?: return
+        when (slot) {
+            ARCADE_SLOT -> message = "Arcade: coming soon"
+            GATE_SLOT -> message = "\"Portal opens at \$${BigNumber.format(setting.portalThreshold)}! What a deal!\""
+            else -> {
+                val id = buildingAt(slot) ?: return
+                val def = setting.building(id)
+                val building = state.building(id)
+                when {
+                    building.unlocked -> onEnter(id)
+                    def.microgame == null -> message = "${def.name}: under construction"
+                    viewModel.unlock(id) -> {
+                        haptics.heavy()
+                        message = "${def.name} open!"
+                    }
+                    else -> {
+                        haptics.failure()
+                        message = "Need \$${BigNumber.format(def.unlockCost)}"
+                    }
+                }
+            }
+        }
+    }
+
+    // The tap detector outlives recompositions; always call the latest onTap.
+    val latestOnTap by rememberUpdatedState(::onTap)
+
+    LaunchedEffect(message) {
+        if (message != null) {
+            delay(1800)
+            message = null
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .onRotaryScrollEvent { event ->
+                walker.onDetents(detents.fromPixels(event.verticalScrollPixels)).forEach(::onWalkEvent)
+                true
+            }
+            .focusRequester(focusRequester)
+            .focusable()
+            .pointerInput(Unit) { detectTapGestures { latestOnTap() } },
+    ) {
+        FilamentSurface(
+            modifier = Modifier.fillMaxSize(),
+            createScene = { engine ->
+                OverworldScene(engine, walker).also { created ->
+                    created.setBuildings(visuals)
+                    created.frameListener = { dt ->
+                        walker.update(dt)?.let(::onWalkEvent)
+                        val slot = walker.doorSlot ?: -1
+                        if (slot != doorSlot) doorSlot = slot
+                    }
+                    scene = created
+                }
+            },
+        )
+
+        // Floating labels: names over open buildings, prices over locked ones.
+        scene?.let { s ->
+            for (slot in 0 until OverworldScene.SLOT_COUNT) {
+                val (text, color) = labelFor(slot, state, viewModel)
+                Text(
+                    text = text,
+                    color = color,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier
+                        .anchoredAbove { s.labelPositions.getOrNull(slot) }
+                        .background(Ink.copy(alpha = 0.6f), RoundedCornerShape(6.dp))
+                        .padding(horizontal = 5.dp, vertical = 1.dp),
+                )
+            }
+        }
+
+        TopCurvedText("\$${BigNumber.format(state.setting.money)}  +${BigNumber.format(income)}/s", Gold)
+
+        val progress = Economy.portalProgress(state, setting).toFloat()
+        EdgeArc(progress = progress, color = Color(0xFFB4A7D6))
+        BottomCurvedText("Portal ${(progress * 100).roundToInt()}%")
+
+        val hint = message ?: hintFor(doorSlot, state, viewModel)
+        if (hint != null) {
+            Text(
+                text = hint,
+                textAlign = TextAlign.Center,
+                fontSize = 12.sp,
+                color = Color.White,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 40.dp, start = 36.dp, end = 36.dp)
+                    .fillMaxWidth()
+                    .background(Ink.copy(alpha = 0.7f), RoundedCornerShape(10.dp))
+                    .padding(horizontal = 6.dp, vertical = 3.dp),
+            )
+        }
+    }
+}
+
+private fun labelFor(slot: Int, state: GameState, viewModel: GameViewModel): Pair<String, Color> {
+    val setting = viewModel.setting(state)
+    return when (slot) {
+        ARCADE_SLOT -> "Arcade" to Color.White
+        GATE_SLOT -> "Portal" to Color(0xFFD9CCFF)
+        else -> {
+            val def = setting.buildings[slot - 1]
+            val building = state.building(def.id)
+            when {
+                building.unlocked -> def.name to Color.White
+                state.setting.money >= def.unlockCost && def.microgame != null -> "\$${BigNumber.format(def.unlockCost)}" to Good
+                else -> "\$${BigNumber.format(def.unlockCost)}" to Gold
+            }
+        }
+    }
+}
+
+private fun hintFor(slot: Int, state: GameState, viewModel: GameViewModel): String? {
+    if (slot !in 1..5) return null
+    val def = viewModel.setting(state).buildings[slot - 1]
+    val building = state.building(def.id)
+    return when {
+        building.unlocked -> "Tap to enter"
+        def.microgame == null -> "Under construction"
+        else -> "Tap to buy"
+    }
+}
