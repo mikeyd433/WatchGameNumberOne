@@ -1,0 +1,19 @@
+// Unlit material for the low-poly look. Lighting is baked into vertex colors on
+// the CPU (see MeshBuilder), so the GPU only multiplies color by a tint.
+// `tint` dims locked buildings into silhouettes and recolors the dough.
+material {
+    name : flat_vertex_color,
+    shadingModel : unlit,
+    culling : none,
+    requires : [ color ],
+    parameters : [
+        { type : float4, name : tint }
+    ]
+}
+
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+        material.baseColor = getColor() * materialParams.tint;
+    }
+}
