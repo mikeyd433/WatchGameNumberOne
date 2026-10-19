@@ -211,6 +211,10 @@ class FilamentHost(
         setRunning(false)
         destroyed = true
         uiHelper.detach()
+
+        // Views first: they point at the scenes, cameras and render target below.
+        engine.destroyView(sceneView)
+        engine.destroyView(screenView)
         scene.destroy()
 
         engine.destroyEntity(quadEntity)
@@ -219,11 +223,9 @@ class FilamentHost(
         engine.destroyIndexBuffer(quadIndices)
         engine.destroyMaterialInstance(blitMaterial)
         engine.destroyScene(screenScene)
-        engine.destroyView(screenView)
         engine.destroyCameraComponent(screenCameraEntity)
         EntityManager.get().destroy(screenCameraEntity)
 
-        engine.destroyView(sceneView)
         destroyRenderTarget()
         engine.destroyRenderer(renderer)
         engine.destroyColorGrading(colorGrading)
