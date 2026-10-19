@@ -42,9 +42,28 @@ jobs:
           name: bezel-town-apk
           path: app/build/outputs/apk/release/*.apk
 
-      # Every main build replaces the "latest" release, so this link always
-      # serves the newest APK:
+      # Play Store bundle, signed with the private upload key from repo secrets
+      # BEZEL_UPLOAD_KEYSTORE_BASE64 and BEZEL_UPLOAD_PASSWORD. Skipped if unset.
+      - name: Build Play bundle
+        id: bundle
+        env:
+          KEYSTORE_BASE64: ${{ secrets.BEZEL_UPLOAD_KEYSTORE_BASE64 }}
+          BEZEL_UPLOAD_PASSWORD: ${{ secrets.BEZEL_UPLOAD_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$BEZEL_UPLOAD_PASSWORD" ]; then
+            echo "Upload key secrets not set; skipping the Play bundle."
+            exit 0
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.p12"
+          BEZEL_UPLOAD_KEYSTORE="$RUNNER_TEMP/upload.p12" ./gradlew :app:bundlePlay
+          rm -f "$RUNNER_TEMP/upload.p12"
+          cp app/build/outputs/bundle/play/app-play.aab bezel-town.aab
+          echo "built=true" >> "$GITHUB_OUTPUT"
+
+      # Every main build replaces the "latest" release, so these links always
+      # serve the newest builds:
       # https://github.com/mikeyd433/WatchGameNumberOne/releases/download/latest/bezel-town.apk
+      # https://github.com/mikeyd433/WatchGameNumberOne/releases/download/latest/bezel-town.aab
       - name: Publish latest APK
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         env:
@@ -53,7 +72,9 @@ jobs:
           cp app/build/outputs/apk/release/app-release.apk bezel-town.apk
           version="0.1.$(git rev-list --count HEAD)"
           gh release delete latest --cleanup-tag --yes || true
-          gh release create latest bezel-town.apk \
+          assets="bezel-town.apk"
+          if [ "${{ steps.bundle.outputs.built }}" = "true" ]; then assets="$assets bezel-town.aab"; fi
+          gh release create latest $assets \
             --target "$GITHUB_SHA" \
             --title "Latest build ($version)" \
             --notes "Build of $(git rev-parse --short HEAD): $(git log -1 --format=%s)"

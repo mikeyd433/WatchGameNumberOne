@@ -18,6 +18,12 @@ val commitCount: Int = runCatching {
     out.toString().trim().toInt()
 }.getOrDefault(1)
 
+// Play upload key. Never committed: CI writes it from GitHub secrets, and a local
+// build can point at it with the same environment variables.
+val uploadKeystore: String? = System.getenv("BEZEL_UPLOAD_KEYSTORE")
+val uploadPassword: String? = System.getenv("BEZEL_UPLOAD_PASSWORD")
+val hasUploadKey = !uploadKeystore.isNullOrBlank() && !uploadPassword.isNullOrBlank() && file(uploadKeystore!!).exists()
+
 android {
     namespace = "com.mikeyd.bezeltown"
     compileSdk = 35
@@ -26,7 +32,7 @@ android {
         applicationId = "com.mikeyd.bezeltown"
         // Wear OS 3, the oldest OS the Galaxy Watch 4 shipped with.
         minSdk = 30
-        targetSdk = 34
+        targetSdk = 35
         versionCode = commitCount
         versionName = "0.1.$commitCount"
 
@@ -44,6 +50,15 @@ android {
             keyAlias = "androiddebugkey"
             keyPassword = "android"
         }
+        if (hasUploadKey) {
+            create("upload") {
+                storeFile = file(uploadKeystore!!)
+                storeType = "pkcs12"
+                storePassword = uploadPassword
+                keyAlias = "upload"
+                keyPassword = uploadPassword
+            }
+        }
     }
 
     buildTypes {
@@ -54,8 +69,15 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // Sideloaded for now; sign with the debug key so release builds install too.
+            // For sideloading: signed with the shared debug key so builds install over each other.
             signingConfig = signingConfigs.getByName("debug")
+        }
+        // For Google Play: the same optimized build, signed with the private upload key.
+        // `./gradlew :app:bundlePlay` makes the .aab to upload to the Play Console.
+        create("play") {
+            initWith(getByName("release"))
+            matchingFallbacks += listOf("release")
+            signingConfig = if (hasUploadKey) signingConfigs.getByName("upload") else null
         }
     }
 
@@ -98,4 +120,14 @@ dependencies {
     debugImplementation(libs.compose.ui.tooling)
 
     implementation(libs.filament.android)
+}
+
+// An unsigned bundle is useless to Play, so fail early with instructions.
+tasks.matching { it.name == "bundlePlay" }.configureEach {
+    doFirst {
+        check(hasUploadKey) {
+            "bundlePlay needs the Play upload key: set BEZEL_UPLOAD_KEYSTORE (path to the .p12) " +
+                "and BEZEL_UPLOAD_PASSWORD."
+        }
+    }
 }

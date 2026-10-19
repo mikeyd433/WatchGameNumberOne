@@ -19,3 +19,6 @@ Wear OS incremental game. See README.md for layout and docs/SPEC.md for the desi
 - `core/` is pure Kotlin and testable on any JVM; game logic belongs there.
 - Recompile `app/src/main/materials/*.mat` with `tools/build-materials.sh` using
   `matc` from the same Filament release as `gradle/libs.versions.toml`.
+- The Play Store build is `./gradlew :app:bundlePlay`, signed with a private upload
+  key the owner holds (env `BEZEL_UPLOAD_KEYSTORE` / `BEZEL_UPLOAD_PASSWORD`; CI
+  reads it from repo secrets). Never commit an upload key or its password.

@@ -67,6 +67,20 @@ published as the `latest` release, so this link always serves the newest APK:
 
 https://github.com/mikeyd433/WatchGameNumberOne/releases/download/latest/bezel-town.apk
 
+## Google Play (internal testing)
+
+`./gradlew :app:bundlePlay` builds `app/build/outputs/bundle/play/app-play.aab`:
+the same optimized build, signed with the private Play upload key. The key is
+never committed. Point the build at it with `BEZEL_UPLOAD_KEYSTORE` (path to the
+`.p12`) and `BEZEL_UPLOAD_PASSWORD`. In CI, the repo secrets
+`BEZEL_UPLOAD_KEYSTORE_BASE64` and `BEZEL_UPLOAD_PASSWORD` do the same, and each
+`main` build attaches `bezel-town.aab` to the `latest` release:
+
+https://github.com/mikeyd433/WatchGameNumberOne/releases/download/latest/bezel-town.aab
+
+Play re-signs apps with its own key, so Play installs and sideloaded installs
+can't update each other. Uninstall when switching between them.
+
 ## Installing on the watch from an Android phone
 
 1. On the watch: Settings → About watch → Software information → tap Software

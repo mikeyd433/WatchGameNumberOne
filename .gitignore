@@ -6,3 +6,7 @@ local.properties
 .DS_Store
 captures/
 .kotlin/
+
+# Play upload keys stay out of git (the debug key is meant to be shared).
+*.p12
+*.jks
