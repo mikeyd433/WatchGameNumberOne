@@ -47,6 +47,9 @@ class KneadGame(private val random: Random = Random.Default) : Microgame(Microga
 
     override val progress: Float get() = cleared.toFloat() / TARGET_ARROWS
 
+    // Each arrow needs a reaction and a full swipe, so instant finishes aren't possible.
+    override val parSeconds: Float get() = PAR_SECONDS
+
     override fun onDrag(x: Float, y: Float, dx: Float, dy: Float) {
         if (finished) return
         dragX += dx
@@ -106,6 +109,8 @@ class KneadGame(private val random: Random = Random.Default) : Microgame(Microga
 
     companion object {
         const val TARGET_ARROWS = 10
+        /** Clearing all arrows this fast scores 100 (before mistakes). */
+        const val PAR_SECONDS = 4.5f
         /** Finger travel, in half-screen units, that counts as a swipe. */
         const val SWIPE_DISTANCE = 0.3f
         const val MISTAKE_PENALTY_SECONDS = 0.5f

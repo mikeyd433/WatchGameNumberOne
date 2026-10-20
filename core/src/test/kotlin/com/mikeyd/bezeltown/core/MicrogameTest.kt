@@ -23,8 +23,16 @@ class MicrogameTest {
         assertTrue(g.succeeded)
         assertEquals(KneadGame.TARGET_ARROWS, g.cleared)
         assertEquals(0, g.mistakes)
-        // 1s of 8s used: 60 + 40 * 7/8
-        assertEquals(95, g.score)
+        // Under par: full marks.
+        assertEquals(100, g.score)
+    }
+
+    @Test fun kneadScoreSlidesFromParToTheBuzzer() {
+        val g = KneadGame(Random(2))
+        g.update(6.25f)
+        while (!g.finished) swipe(g, g.arrow)
+        // Halfway between par (4.5s) and the 8s limit: 60 + 40 * 0.5
+        assertEquals(80, g.score)
     }
 
     @Test fun nextArrowAlwaysPointsSomewhereNew() {
@@ -44,8 +52,8 @@ class MicrogameTest {
         assertEquals(0, g.cleared)
         assertEquals(KneadGame.MISTAKE_PENALTY_SECONDS, g.elapsed, 1e-6f)
         while (!g.finished) swipe(g, g.arrow)
-        // 0.5s used: 60 + round(40 * 7.5/8) = 98, minus 4 for the mistake.
-        assertEquals(94, g.score)
+        // 0.5s used is under par, so 100, minus 4 for the mistake.
+        assertEquals(96, g.score)
     }
 
     @Test fun shortWigglesDontCount() {

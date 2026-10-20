@@ -25,6 +25,13 @@ abstract class Microgame(val id: MicrogameId, val durationSeconds: Float) {
 
     val timeLeftFraction: Float get() = (1f - elapsed / durationSeconds).coerceIn(0f, 1f)
 
+    /**
+     * Finishing within this many seconds earns the full time bonus. 0 means the
+     * bonus only maxes out at an instant finish; games whose every action takes a
+     * moment set a realistic par so a good run can still score 100.
+     */
+    protected open val parSeconds: Float = 0f
+
     fun update(dt: Float) {
         if (finished || dt <= 0f) return
         elapsed += dt
@@ -52,7 +59,13 @@ abstract class Microgame(val id: MicrogameId, val durationSeconds: Float) {
         score = computeScore(success)
     }
 
-    /** Finishing earns 60 plus up to 40 for time left; failing earns partial credit for progress. */
-    protected open fun computeScore(success: Boolean): Int =
-        if (success) 60 + (40 * timeLeftFraction).roundToInt() else (60 * progress.coerceIn(0f, 1f)).roundToInt()
+    /**
+     * Finishing earns 60 plus up to 40 for speed (full marks at or under par);
+     * failing earns partial credit for progress.
+     */
+    protected open fun computeScore(success: Boolean): Int {
+        if (!success) return (60 * progress.coerceIn(0f, 1f)).roundToInt()
+        val speed = ((durationSeconds - elapsed) / (durationSeconds - parSeconds)).coerceIn(0f, 1f)
+        return 60 + (40 * speed).roundToInt()
+    }
 }
