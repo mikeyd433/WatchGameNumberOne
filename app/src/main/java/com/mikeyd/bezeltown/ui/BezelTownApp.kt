@@ -20,6 +20,7 @@ import androidx.wear.compose.navigation.rememberSwipeDismissableNavController
 import androidx.wear.compose.navigation.rememberSwipeDismissableNavHostState
 import com.mikeyd.bezeltown.GameViewModel
 import com.mikeyd.bezeltown.core.model.BuildingId
+import com.mikeyd.bezeltown.core.model.GameState
 import com.mikeyd.bezeltown.render.FilamentRuntime
 
 private const val OVERWORLD = "overworld"
@@ -50,18 +51,22 @@ fun BezelTownApp(viewModel: GameViewModel) {
             startDestination = OVERWORLD,
             state = rememberSwipeDismissableNavHostState(swipeToDismissState),
         ) {
+            // Each screen reads the live state itself: the nav graph is built once, so
+            // a value captured out here would freeze at whatever it was back then.
             composable(OVERWORLD) {
+                val live = viewModel.liveState() ?: return@composable
                 OverworldScreen(
-                    state = loaded,
+                    state = live,
                     viewModel = viewModel,
                     onEnter = { id -> navController.navigate("building/${id.name}") },
                 )
             }
             composable(BUILDING) { entry ->
                 val id = BuildingId.valueOf(entry.arguments?.getString("id") ?: return@composable)
+                val live = viewModel.liveState() ?: return@composable
                 BuildingScreen(
                     id = id,
-                    state = loaded,
+                    state = live,
                     viewModel = viewModel,
                     swipeToDismissState = swipeToDismissState,
                     onUpgrades = { navController.navigate("upgrades/${id.name}") },
@@ -69,8 +74,13 @@ fun BezelTownApp(viewModel: GameViewModel) {
             }
             composable(UPGRADES) { entry ->
                 val id = BuildingId.valueOf(entry.arguments?.getString("id") ?: return@composable)
-                UpgradeScreen(id = id, state = loaded, viewModel = viewModel)
+                val live = viewModel.liveState() ?: return@composable
+                UpgradeScreen(id = id, state = live, viewModel = viewModel)
             }
         }
     }
 }
+
+/** The current game state, recomposing the caller whenever it changes. */
+@Composable
+private fun GameViewModel.liveState(): GameState? = state.collectAsStateWithLifecycle().value
