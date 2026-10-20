@@ -33,9 +33,17 @@ abstract class Microgame(val id: MicrogameId, val durationSeconds: Float) {
     }
 
     open fun onDrag(x: Float, y: Float, dx: Float, dy: Float) {}
+
+    /** The finger lifted (or the gesture was cancelled). */
+    open fun onDragEnd() {}
     open fun onDetents(detents: Int) {}
 
     protected open fun step(dt: Float) {}
+
+    /** Uses up extra clock time, e.g. as a penalty. The timeout is checked on the next [update]. */
+    protected fun addTime(seconds: Float) {
+        elapsed += seconds
+    }
 
     protected fun finish(success: Boolean) {
         if (finished) return

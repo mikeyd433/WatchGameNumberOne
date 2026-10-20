@@ -4,37 +4,76 @@ import com.mikeyd.bezeltown.core.microgame.KneadGame
 import com.mikeyd.bezeltown.core.microgame.PumpGame
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.random.Random
 
 class MicrogameTest {
-    @Test fun kneadingFinishesWithTimeBonus() {
-        val g = KneadGame()
+    /** Swipes in [d] far enough to count, in a few drag steps like a real finger. */
+    private fun swipe(g: KneadGame, d: KneadGame.Direction) {
+        repeat(4) { g.onDrag(0f, 0f, d.x * 0.1f, d.y * 0.1f) }
+        g.onDragEnd()
+    }
+
+    @Test fun clearingArrowsFinishesWithTimeBonus() {
+        val g = KneadGame(Random(1))
         g.update(1f)
-        var dir = 1f
-        while (!g.finished) {
-            g.onDrag(0f, 0f, 0.5f * dir, 0f)
-            dir = -dir
-        }
+        while (!g.finished) swipe(g, g.arrow)
         assertTrue(g.succeeded)
-        assertEquals(KneadGame.TARGET_KNEADS, g.kneads)
-        // 1s of 7s used: 60 + 40 * 6/7
+        assertEquals(KneadGame.TARGET_ARROWS, g.cleared)
+        assertEquals(0, g.mistakes)
+        // 1s of 8s used: 60 + 40 * 7/8
+        assertEquals(95, g.score)
+    }
+
+    @Test fun nextArrowAlwaysPointsSomewhereNew() {
+        val g = KneadGame(Random(42))
+        repeat(KneadGame.TARGET_ARROWS - 1) {
+            val before = g.arrow
+            swipe(g, before)
+            assertNotEquals(before, g.arrow)
+        }
+    }
+
+    @Test fun wrongSwipeCostsTimeAndScore() {
+        val g = KneadGame(Random(3))
+        val wrong = KneadGame.Direction.entries.first { it != g.arrow }
+        swipe(g, wrong)
+        assertEquals(1, g.mistakes)
+        assertEquals(0, g.cleared)
+        assertEquals(KneadGame.MISTAKE_PENALTY_SECONDS, g.elapsed, 1e-6f)
+        while (!g.finished) swipe(g, g.arrow)
+        // 0.5s used: 60 + round(40 * 7.5/8) = 98, minus 4 for the mistake.
         assertEquals(94, g.score)
     }
 
-    @Test fun swipesOffTheDoughDontCount() {
-        val g = KneadGame()
-        repeat(50) { g.onDrag(0.95f, 0.95f, 0.5f, 0f) }
-        assertEquals(0, g.kneads)
+    @Test fun shortWigglesDontCount() {
+        val g = KneadGame(Random(5))
+        repeat(20) {
+            g.onDrag(0f, 0f, 0.1f, 0f)
+            g.onDrag(0f, 0f, -0.1f, 0f)
+        }
+        assertEquals(0, g.cleared)
+        assertEquals(0, g.mistakes)
+    }
+
+    @Test fun zigZagWithoutLiftingCountsEachSwipe() {
+        val g = KneadGame(Random(7))
+        repeat(3) {
+            val d = g.arrow
+            repeat(4) { g.onDrag(0f, 0f, d.x * 0.1f, d.y * 0.1f) }
+        }
+        assertEquals(3, g.cleared)
     }
 
     @Test fun kneadTimeoutGivesPartialScore() {
-        val g = KneadGame()
-        repeat(10) { g.onDrag(0f, 0f, 0.25f, 0f) } // 2.5 travel = 5 kneads
+        val g = KneadGame(Random(9))
+        repeat(6) { swipe(g, g.arrow) }
         g.update(10f)
         assertTrue(g.finished)
         assertFalse(g.succeeded)
-        assertEquals(20, g.score) // 60 * 5/15
+        assertEquals(30, g.score) // 60 * 6/12
     }
 
     @Test fun steadyCrankingFillsTheTank() {

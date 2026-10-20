@@ -3,43 +3,113 @@ package com.mikeyd.bezeltown.core.microgame
 import com.mikeyd.bezeltown.core.model.MicrogameId
 import kotlin.math.abs
 import kotlin.math.exp
-import kotlin.math.hypot
+import kotlin.random.Random
 
-/** Bakery: swipe back and forth across the dough until it's springy. */
-class KneadGame : Microgame(MicrogameId.KNEAD, durationSeconds = 7f) {
-    var kneads = 0
+/**
+ * Bakery: arrows pop up over the dough one at a time. Swipe the way each one
+ * points to knead. A wrong swipe splats the dough and costs time.
+ */
+class KneadGame(private val random: Random = Random.Default) : Microgame(MicrogameId.KNEAD, durationSeconds = 8f) {
+    enum class Direction(val x: Int, val y: Int) { UP(0, 1), DOWN(0, -1), LEFT(-1, 0), RIGHT(1, 0) }
+
+    /** The arrow to swipe now. */
+    var arrow: Direction = Direction.entries[random.nextInt(Direction.entries.size)]
         private set
 
-    /** -1..1, how far the dough is currently pulled sideways. Relaxes back to 0. */
-    var stretch = 0f
+    /** Seconds since [arrow] appeared, for its pop-in animation. */
+    var arrowAge = 0f
         private set
 
-    private var travel = 0f
+    /** The arrow just cleared and how long ago, for its fly-off animation. */
+    var lastCleared: Direction? = null
+        private set
+    var clearedAge = 0f
+        private set
 
-    override val progress: Float get() = kneads.toFloat() / TARGET_KNEADS
+    var cleared = 0
+        private set
+    var mistakes = 0
+        private set
+
+    /** Seconds since the last wrong swipe (large when there hasn't been one). */
+    var mistakeAge = 10f
+        private set
+
+    /** -1..1 per axis: how far the dough is pulled. Relaxes back to 0. */
+    var stretchX = 0f
+        private set
+    var stretchY = 0f
+        private set
+
+    // Finger movement since the last recognized swipe.
+    private var dragX = 0f
+    private var dragY = 0f
+
+    override val progress: Float get() = cleared.toFloat() / TARGET_ARROWS
 
     override fun onDrag(x: Float, y: Float, dx: Float, dy: Float) {
         if (finished) return
-        if (hypot(x, y) > DOUGH_RADIUS * GRAB_SLACK) return
-        travel += abs(dx)
-        stretch = (stretch + dx * STRETCH_GAIN).coerceIn(-1f, 1f)
-        while (travel >= TRAVEL_PER_KNEAD) {
-            travel -= TRAVEL_PER_KNEAD
-            kneads++
+        dragX += dx
+        dragY += dy
+        if (abs(dragX) < SWIPE_DISTANCE && abs(dragY) < SWIPE_DISTANCE) return
+
+        val swiped = when {
+            abs(dragX) >= abs(dragY) -> if (dragX > 0) Direction.RIGHT else Direction.LEFT
+            else -> if (dragY > 0) Direction.UP else Direction.DOWN
         }
-        if (kneads >= TARGET_KNEADS) finish(success = true)
+        // Start measuring afresh, so a zig-zag without lifting the finger keeps working.
+        dragX = 0f
+        dragY = 0f
+        if (swiped == arrow) clear(swiped) else miss()
+    }
+
+    override fun onDragEnd() {
+        dragX = 0f
+        dragY = 0f
+    }
+
+    private fun clear(direction: Direction) {
+        cleared++
+        stretchX = direction.x.toFloat()
+        stretchY = direction.y.toFloat()
+        lastCleared = direction
+        clearedAge = 0f
+        if (cleared >= TARGET_ARROWS) {
+            finish(success = true)
+            return
+        }
+        // Always a different direction from the one just cleared.
+        val others = Direction.entries.filter { it != direction }
+        arrow = others[random.nextInt(others.size)]
+        arrowAge = 0f
+    }
+
+    private fun miss() {
+        mistakes++
+        mistakeAge = 0f
+        addTime(MISTAKE_PENALTY_SECONDS)
     }
 
     override fun step(dt: Float) {
-        stretch *= exp(-dt * RELAX_RATE)
+        arrowAge += dt
+        clearedAge += dt
+        mistakeAge += dt
+        val relax = exp(-dt * RELAX_RATE)
+        stretchX *= relax
+        stretchY *= relax
+    }
+
+    override fun computeScore(success: Boolean): Int {
+        val base = super.computeScore(success)
+        return if (success) (base - mistakes * SCORE_PER_MISTAKE).coerceIn(1, 100) else base
     }
 
     companion object {
-        const val DOUGH_RADIUS = 0.6f
-        const val GRAB_SLACK = 1.2f
-        const val TRAVEL_PER_KNEAD = 0.5f
-        const val TARGET_KNEADS = 15
-        const val STRETCH_GAIN = 1.2f
-        const val RELAX_RATE = 6f
+        const val TARGET_ARROWS = 12
+        /** Finger travel, in half-screen units, that counts as a swipe. */
+        const val SWIPE_DISTANCE = 0.3f
+        const val MISTAKE_PENALTY_SECONDS = 0.5f
+        const val SCORE_PER_MISTAKE = 4
+        const val RELAX_RATE = 7f
     }
 }

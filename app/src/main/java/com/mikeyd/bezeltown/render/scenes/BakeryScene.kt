@@ -22,13 +22,15 @@ class BakeryScene(engine: Engine) : MicrogameScene(engine, srgb(0x4A2E22), Fog(n
     private val puffs: List<Puff>
 
     private var time = 0f
-    private var lastKneads = 0
+    private var lastCleared = 0
+    private var lastMistakes = 0
     private var squash = 0f
+    private var splat = 0f
 
     private class Puff(val entity: Int) {
         var age = 1f
         var x = 0f; var y = 0f; var z = 0f
-        var vx = 0f; var vy = 0f
+        var vx = 0f; var vy = 0f; var vz = 0f
     }
 
     init {
@@ -42,22 +44,31 @@ class BakeryScene(engine: Engine) : MicrogameScene(engine, srgb(0x4A2E22), Fog(n
     override fun onFrame(dt: Float) {
         time += dt
         val knead = game as? KneadGame
-        val stretch = knead?.stretch ?: 0f
+        // Screen right is world +x; screen up is away from the camera (world -z).
+        val pullX = knead?.stretchX ?: 0f
+        val pullZ = -(knead?.stretchY ?: 0f)
         val progress = knead?.progress ?: 0f
 
-        if (knead != null && knead.kneads > lastKneads) {
+        if (knead != null && knead.cleared > lastCleared) {
             squash = 1f
-            spawnPuffs(if (stretch >= 0f) 1f else -1f)
+            knead.lastCleared?.let { spawnPuffs(it.x.toFloat(), -it.y.toFloat()) }
         }
-        lastKneads = knead?.kneads ?: 0
+        if (knead != null && knead.mistakes > lastMistakes) splat = 1f
+        lastCleared = knead?.cleared ?: 0
+        lastMistakes = knead?.mistakes ?: 0
         squash *= exp(-dt * 8f)
+        splat *= exp(-dt * 5f)
 
         val breathe = if (knead == null) sin(time * 2f) * 0.03f else 0f
-        val s = abs(stretch)
+        val sx = abs(pullX)
+        val sz = abs(pullZ)
+        val spread = 0.35f * splat // a wrong swipe flattens the dough into a pancake
         place(
             dough,
-            x = stretch * 0.25f, y = 0.33f,
-            sx = 1f + 0.45f * s + breathe, sy = 0.6f * (1f - 0.3f * s - 0.25f * squash) - breathe, sz = 1f - 0.15f * s + breathe,
+            x = pullX * 0.25f, y = 0.33f - 0.12f * splat, z = pullZ * 0.2f,
+            sx = 1f + 0.45f * sx - 0.12f * sz + spread + breathe,
+            sy = 0.6f * (1f - 0.3f * (sx + sz) - 0.25f * squash - 0.55f * splat) - breathe,
+            sz = 1f + 0.45f * sz - 0.12f * sx + spread + breathe,
         )
         setTint(doughMaterial, PALE.lerp(GOLDEN, progress.coerceIn(0f, 1f)))
 
@@ -67,22 +78,25 @@ class BakeryScene(engine: Engine) : MicrogameScene(engine, srgb(0x4A2E22), Fog(n
                 continue
             }
             p.age += dt * 1.4f
-            p.x += p.vx * dt; p.y += p.vy * dt
+            p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt
             p.vy *= exp(-dt * 2f)
             val size = (1f - p.age) * 1.4f
             place(p.entity, x = p.x, y = p.y, z = p.z, rotYDeg = p.age * 90f, sx = size, sy = size, sz = size)
         }
     }
 
-    private fun spawnPuffs(direction: Float) {
+    /** A few flour puffs flying off the dough in the swiped direction (world x/z). */
+    private fun spawnPuffs(dirX: Float, dirZ: Float) {
         var spawned = 0
         for (p in puffs) {
             if (p.age < 1f) continue
+            val side = Random.nextFloat() * 0.6f - 0.3f
             p.age = 0f
-            p.x = direction * (0.5f + Random.nextFloat() * 0.3f)
+            p.x = dirX * (0.5f + Random.nextFloat() * 0.3f) + dirZ * side
             p.y = 0.3f
-            p.z = Random.nextFloat() * 0.6f - 0.3f
-            p.vx = direction * (0.2f + Random.nextFloat() * 0.5f)
+            p.z = dirZ * (0.45f + Random.nextFloat() * 0.25f) + dirX * side
+            p.vx = dirX * (0.2f + Random.nextFloat() * 0.5f)
+            p.vz = dirZ * (0.2f + Random.nextFloat() * 0.5f)
             p.vy = 0.6f + Random.nextFloat() * 0.6f
             if (++spawned == 3) break
         }
