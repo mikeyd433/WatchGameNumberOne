@@ -1,6 +1,15 @@
 package com.mikeyd.bezeltown.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -41,7 +50,7 @@ import com.mikeyd.bezeltown.input.BezelDetents
 import com.mikeyd.bezeltown.render.FilamentSurface
 import com.mikeyd.bezeltown.render.scenes.BuildingVisual
 import com.mikeyd.bezeltown.render.scenes.OverworldScene
-import com.mikeyd.bezeltown.render.scenes.SignLine
+import com.mikeyd.bezeltown.render.PixelFont
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
@@ -81,10 +90,7 @@ fun OverworldScreen(
         BuildingVisual(unlocked = b.unlocked, activity = (rate / (def.incomePerLevel * 10).coerceAtLeast(1e-9)).toFloat().coerceIn(0f, 1f))
     }
     val signs = (0 until OverworldScene.SLOT_COUNT).map { signFor(it, state, viewModel) }
-    SideEffect {
-        scene?.setBuildings(visuals)
-        scene?.setSigns(signs)
-    }
+    SideEffect { scene?.setBuildings(visuals) }
 
     fun buildingAt(slot: Int): BuildingId? = setting.buildings.getOrNull(slot - 1)?.id
 
@@ -140,7 +146,6 @@ fun OverworldScreen(
             createScene = { engine ->
                 OverworldScene(engine, walker).also { created ->
                     created.setBuildings(visuals)
-                    created.setSigns(signs)
                     created.frameListener = { dt ->
                         walker.update(dt)?.let(::onWalkEvent)
                         val slot = walker.doorSlot ?: -1
@@ -149,6 +154,16 @@ fun OverworldScreen(
                     scene = created
                 }
             },
+        )
+
+        // The name of the door you're standing at floats over it, clear of the money counter.
+        FloatingName(
+            lines = signs.getOrNull(doorSlot),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 38.dp)
+                .fillMaxWidth(0.86f)
+                .height(64.dp),
         )
 
         TopCurvedText("\$${BigNumber.format(state.setting.money)}  +${BigNumber.format(income)}/s", Gold)
@@ -175,7 +190,67 @@ fun OverworldScreen(
     }
 }
 
-/** What the pop-up sign at [slot] says: the name, plus the price while it's locked. */
+/** One line of floating text, colored with an sRGB hex value. */
+data class SignLine(val text: String, val color: Int)
+
+/**
+ * Chunky pixel-letter text with a 3D extruded look, drawn at full screen
+ * resolution so it stays sharp over the low-resolution scene. Springs up when
+ * [lines] appears and sinks away when it goes.
+ */
+@Composable
+private fun FloatingName(lines: List<SignLine>?, modifier: Modifier = Modifier) {
+    // Keep showing the last name while it animates out.
+    var shown by remember { mutableStateOf(lines) }
+    if (lines != null) shown = lines
+    val rise by animateFloatAsState(
+        targetValue = if (lines != null) 1f else 0f,
+        animationSpec = if (lines != null) spring(dampingRatio = 0.45f, stiffness = 500f) else tween(140),
+        label = "floating name",
+    )
+    val content = shown ?: return
+    if (rise <= 0.001f) return
+
+    Canvas(modifier) {
+        val gap = 2
+        val textRows = content.size * PixelFont.HEIGHT + (content.size - 1) * gap
+        val widest = content.maxOf { PixelFont.width(it.text) }.coerceAtLeast(1)
+        // Fit the widest line, but never bigger than ~4dp per font pixel.
+        val px = minOf(size.width / widest, size.height / textRows, 4.dp.toPx())
+        val depth = (px * 0.45f).coerceAtLeast(1f)
+        val blockHeight = textRows * px
+
+        // Rise up from below and grow into place.
+        val lift = (1f - rise) * size.height * 0.5f
+        withTransform({
+            translate(top = lift)
+            scale(scaleX = 1f, scaleY = rise.coerceAtLeast(0f), pivot = Offset(size.width / 2f, size.height))
+        }) {
+            content.forEachIndexed { row, line ->
+                val left = (size.width - PixelFont.width(line.text) * px) / 2f
+                val top = (size.height - blockHeight) / 2f + row * (PixelFont.HEIGHT + gap) * px
+                val face = Color(0xFF000000.toInt() or line.color)
+                val side = lerp(face, Color.Black, 0.55f)
+                val cell = Size(px + 0.5f, px + 0.5f)
+                // Shadow, then the extruded sides (down-right), then the front face.
+                PixelFont.forEachPixel(line.text) { x, y ->
+                    drawRect(Color.Black.copy(alpha = 0.35f), Offset(left + x * px + depth * 2.2f, top + y * px + depth * 2.6f), cell)
+                }
+                for (step in 3 downTo 1) {
+                    val d = depth * step / 3f
+                    PixelFont.forEachPixel(line.text) { x, y ->
+                        drawRect(side, Offset(left + x * px + d, top + y * px + d), cell)
+                    }
+                }
+                PixelFont.forEachPixel(line.text) { x, y ->
+                    drawRect(face, Offset(left + x * px, top + y * px), cell)
+                }
+            }
+        }
+    }
+}
+
+/** The floating text for [slot]: the name, plus the price while it's locked. */
 private fun signFor(slot: Int, state: GameState, viewModel: GameViewModel): List<SignLine> {
     val setting = viewModel.setting(state)
     return when (slot) {

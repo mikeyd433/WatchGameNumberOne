@@ -102,22 +102,14 @@ abstract class FilamentScene(
             .boundingBox(mesh.bounds)
             .geometry(0, RenderableManager.PrimitiveType.TRIANGLES, mesh.vertexBuffer, mesh.indexBuffer, 0, mesh.indexCount)
             .material(0, material)
-            .culling(false)
+            // Skip whatever is off screen, e.g. the buildings you aren't standing near.
+            .culling(true)
             .castShadows(false)
             .receiveShadows(false)
             .build(engine, entity)
         scene.addEntity(entity)
         entities += entity
         return entity
-    }
-
-    /** Removes a mesh added with [addMesh] and frees its buffers. */
-    protected fun removeMesh(entity: Int) {
-        scene.removeEntity(entity)
-        engine.destroyEntity(entity)
-        EntityManager.get().destroy(entity)
-        entities.remove(entity)
-        meshes.remove(entity)?.destroy(engine)
     }
 
     /** Sets an entity's local transform: translate, then rotate Y, X, Z, then scale. */
