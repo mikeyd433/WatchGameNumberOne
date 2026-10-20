@@ -100,6 +100,22 @@ class MicrogameTest {
         assertTrue(g.fill < 20f)
     }
 
+    @Test fun gaugeStaysGreenWhenSteadyAndGoesRedWhenFast() {
+        val steady = PumpGame()
+        repeat(12) {
+            steady.update(1f / 6f)
+            steady.onDetents(1)
+        }
+        assertTrue(steady.pressure in 0.4f..1f)
+
+        val fast = PumpGame()
+        repeat(30) {
+            fast.update(1f / 15f)
+            fast.onDetents(1)
+        }
+        assertTrue(fast.pressure > 1f)
+    }
+
     @Test fun pumpTimeoutScoresByFill() {
         val g = PumpGame()
         repeat(20) {

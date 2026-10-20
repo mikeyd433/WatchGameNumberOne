@@ -20,6 +20,13 @@ class PumpGame : Microgame(MicrogameId.PUMP, durationSeconds = 8f) {
     var speed = 0f
         private set
 
+    /**
+     * Cranking speed relative to the limit, eased like a real gauge needle:
+     * 1.0 is exactly [SWEET_MAX]; above 1 the pipe sprays.
+     */
+    var pressure = 0f
+        private set
+
     /** True for a moment after a too-fast stroke. */
     val spraying: Boolean get() = sprayTimer > 0f
 
@@ -46,6 +53,8 @@ class PumpGame : Microgame(MicrogameId.PUMP, durationSeconds = 8f) {
         prune()
         speed = recent.size / SPEED_WINDOW
         sprayTimer = (sprayTimer - dt).coerceAtLeast(0f)
+        val target = speed / SWEET_MAX
+        pressure += (target - pressure) * (dt * GAUGE_RESPONSE).coerceAtMost(1f)
     }
 
     private fun prune() {
@@ -59,5 +68,7 @@ class PumpGame : Microgame(MicrogameId.PUMP, durationSeconds = 8f) {
         const val SPEED_WINDOW = 0.5f
         const val SPRAY_EFFICIENCY = 0.3f
         const val SPRAY_HOLD = 0.35f
+        /** How quickly the gauge needle follows the actual speed, per second. */
+        const val GAUGE_RESPONSE = 8f
     }
 }

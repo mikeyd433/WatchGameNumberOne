@@ -59,11 +59,14 @@ import com.mikeyd.bezeltown.render.scenes.WaterTowerScene
 import kotlin.math.roundToInt
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
+import kotlin.math.cos
 import kotlin.math.sin
 
 private enum class Phase { LOBBY, COUNTDOWN, PLAYING, RESULT }
@@ -262,18 +265,56 @@ private fun PlayingOverlay(g: Microgame, frame: () -> Int) {
     }
     BottomCurvedText(status)
     if (g is KneadGame) KneadArrow(g)
-    if (g is PumpGame && g.spraying) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-            Text(
-                text = "TOO FAST!",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Black,
-                color = Warn,
-                modifier = Modifier.padding(top = 36.dp),
-            )
+    if (g is PumpGame) {
+        // Upper left, over the sky and the pump's pipe, so the tank stays in view.
+        Column(
+            modifier = Modifier.padding(start = 30.dp, top = 44.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            PressureGauge(g.pressure, overLimit = g.spraying, modifier = Modifier.size(58.dp))
+            if (g.spraying) {
+                Text("TOO FAST!", fontSize = 13.sp, fontWeight = FontWeight.Black, color = Warn)
+            }
         }
     }
 }
+
+/**
+ * A round pressure dial for the pump. The green zone runs up to the speed limit
+ * (pressure 1.0); past it the needle enters the red and the face flashes.
+ */
+@Composable
+private fun PressureGauge(pressure: Float, overLimit: Boolean, modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val center = Offset(size.width / 2f, size.height / 2f)
+        val radius = size.minDimension / 2f
+        val ring = radius * 0.16f
+        // The dial sweeps 240 degrees, open at the bottom, and tops out at 1.5x the limit.
+        val start = 150f
+        val sweep = 240f
+        val limitAt = 1f / GAUGE_MAX
+
+        drawCircle(if (overLimit) Warn.copy(alpha = 0.45f) else Ink.copy(alpha = 0.85f), radius, center)
+        drawCircle(Color.White.copy(alpha = 0.9f), radius, center, style = Stroke(radius * 0.08f))
+
+        val arcInset = ring / 2f + radius * 0.14f
+        val arcTopLeft = Offset(center.x - radius + arcInset, center.y - radius + arcInset)
+        val arcSize = Size((radius - arcInset) * 2f, (radius - arcInset) * 2f)
+        drawArc(Good, start, sweep * limitAt, false, arcTopLeft, arcSize, style = Stroke(ring))
+        drawArc(Warn, start + sweep * limitAt, sweep * (1f - limitAt), false, arcTopLeft, arcSize, style = Stroke(ring))
+
+        val fraction = (pressure / GAUGE_MAX).coerceIn(0f, 1f)
+        val angle = Math.toRadians((start + sweep * fraction).toDouble())
+        val needleEnd = Offset(
+            center.x + cos(angle).toFloat() * radius * 0.72f,
+            center.y + sin(angle).toFloat() * radius * 0.72f,
+        )
+        drawLine(Gold, center, needleEnd, strokeWidth = radius * 0.12f, cap = StrokeCap.Round)
+        drawCircle(Gold, radius * 0.12f, center)
+    }
+}
+
+private const val GAUGE_MAX = 1.5f
 
 /**
  * The arrow to swipe: pops in, flies off the way it was swiped when cleared,
