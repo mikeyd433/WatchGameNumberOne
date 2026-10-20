@@ -101,6 +101,34 @@ class EconomyTest {
         assertTrue(costs.zipWithNext().all { (a, b) -> b > a })
     }
 
+    @Test fun offlinePayoutEarnsWhileAway() {
+        val state = Settings.newGame().withBuilding(BuildingId.BAKERY) { it.copy(automationLevel = 1) }
+        val (after, report) = Economy.offlinePayout(state, town, 600.0)
+        assertEquals(0.5 * 600, report.earned, 1e-9)
+        assertEquals(300.0, after.setting.money, 1e-9)
+        assertFalse(report.storageFilled)
+    }
+
+    @Test fun offlinePayoutStopsAtStorage() {
+        val state = Settings.newGame().withBuilding(BuildingId.BAKERY) { it.copy(automationLevel = 1) }
+        // Storage level 0 holds 1 hour; away for 3 hours.
+        val (_, report) = Economy.offlinePayout(state, town, 3 * 3600.0)
+        assertEquals(0.5 * 3600, report.earned, 1e-9)
+        assertTrue(report.storageFilled)
+
+        val bigger = state.withBuilding(BuildingId.BAKERY) { it.copy(storageLevel = 2) }
+        val (_, report2) = Economy.offlinePayout(bigger, town, 3 * 3600.0)
+        assertEquals(0.5 * 3 * 3600, report2.earned, 1e-9)
+        assertFalse(report2.storageFilled)
+    }
+
+    @Test fun offlinePayoutIgnoresLockedAndIdleBuildings() {
+        val state = Settings.newGame().withBuilding(BuildingId.WATER_TOWER) { it.copy(automationLevel = 5) }
+        val (after, report) = Economy.offlinePayout(state, town, 1000.0)
+        assertEquals(0.0, report.earned, 0.0)
+        assertEquals(state, after)
+    }
+
     @Test fun saveRoundTripsAndNormalizes() {
         val state = Settings.newGame().withMoney(42.0).copy(personalBests = mapOf(MicrogameId.PUMP to 77L))
         assertEquals(state, SaveCodec.decode(SaveCodec.encode(state)))

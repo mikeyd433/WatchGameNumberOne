@@ -13,6 +13,14 @@ import kotlin.math.roundToLong
 /** Story plays pay out; arcade plays only count toward personal bests. */
 enum class PlayMode { STORY, ARCADE }
 
+/** What the buildings earned while the game was closed. */
+data class AwayReport(
+    val seconds: Double,
+    val earned: Double,
+    /** True if at least one building filled its storage and stopped earning. */
+    val storageFilled: Boolean,
+)
+
 data class PlayOutcome(
     val state: GameState,
     val creditsEarned: Long,
@@ -53,6 +61,27 @@ object Economy {
         val income = totalIncome(state, setting)
         if (income == 0.0) return state
         return state.withMoney(state.setting.money + income * seconds)
+    }
+
+    /**
+     * Pays out what each building earned over [seconds] away, each capped at
+     * its Storage (hours of its own output).
+     */
+    fun offlinePayout(state: GameState, setting: SettingDef, seconds: Double): Pair<GameState, AwayReport> {
+        if (seconds <= 0.0) return state to AwayReport(0.0, 0.0, storageFilled = false)
+        var earned = 0.0
+        var filled = false
+        for (b in state.setting.buildings) {
+            if (!b.unlocked) continue
+            val def = setting.building(b.id)
+            val rate = incomePerSecond(def, b.automationLevel, state.totalBonus)
+            if (rate <= 0.0) continue
+            val capSeconds = storageHours(def, b.storageLevel) * 3600.0
+            if (seconds > capSeconds) filled = true
+            earned += rate * minOf(seconds, capSeconds)
+        }
+        val next = if (earned > 0.0) state.withMoney(state.setting.money + earned) else state
+        return next to AwayReport(seconds, earned, filled)
     }
 
     fun portalProgress(state: GameState, setting: SettingDef): Double =

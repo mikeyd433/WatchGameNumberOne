@@ -1,6 +1,17 @@
 package com.mikeyd.bezeltown.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.mikeyd.bezeltown.core.economy.AwayReport
+import com.mikeyd.bezeltown.core.format.BigNumber
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -46,38 +57,92 @@ fun BezelTownApp(viewModel: GameViewModel) {
         val navController = rememberSwipeDismissableNavController()
         // Shared so touch-driven microgames can limit swipe-to-dismiss to the screen edge.
         val swipeToDismissState = rememberSwipeToDismissBoxState()
-        SwipeDismissableNavHost(
-            navController = navController,
-            startDestination = OVERWORLD,
-            state = rememberSwipeDismissableNavHostState(swipeToDismissState),
-        ) {
-            // Each screen reads the live state itself: the nav graph is built once, so
-            // a value captured out here would freeze at whatever it was back then.
-            composable(OVERWORLD) {
-                val live = viewModel.liveState() ?: return@composable
-                OverworldScreen(
-                    state = live,
-                    viewModel = viewModel,
-                    onEnter = { id -> navController.navigate("building/${id.name}") },
-                )
+        val away by viewModel.away.collectAsStateWithLifecycle()
+        Box(Modifier.fillMaxSize()) {
+            SwipeDismissableNavHost(
+                navController = navController,
+                startDestination = OVERWORLD,
+                state = rememberSwipeDismissableNavHostState(swipeToDismissState),
+            ) {
+                // Each screen reads the live state itself: the nav graph is built once, so
+                // a value captured out here would freeze at whatever it was back then.
+                composable(OVERWORLD) {
+                    val live = viewModel.liveState() ?: return@composable
+                    OverworldScreen(
+                        state = live,
+                        viewModel = viewModel,
+                        onEnter = { id -> navController.navigate("building/${id.name}") },
+                    )
+                }
+                composable(BUILDING) { entry ->
+                    val id = BuildingId.valueOf(entry.arguments?.getString("id") ?: return@composable)
+                    val live = viewModel.liveState() ?: return@composable
+                    BuildingScreen(
+                        id = id,
+                        state = live,
+                        viewModel = viewModel,
+                        swipeToDismissState = swipeToDismissState,
+                        onUpgrades = { navController.navigate("upgrades/${id.name}") },
+                    )
+                }
+                composable(UPGRADES) { entry ->
+                    val id = BuildingId.valueOf(entry.arguments?.getString("id") ?: return@composable)
+                    val live = viewModel.liveState() ?: return@composable
+                    UpgradeScreen(id = id, state = live, viewModel = viewModel)
+                }
             }
-            composable(BUILDING) { entry ->
-                val id = BuildingId.valueOf(entry.arguments?.getString("id") ?: return@composable)
-                val live = viewModel.liveState() ?: return@composable
-                BuildingScreen(
-                    id = id,
-                    state = live,
-                    viewModel = viewModel,
-                    swipeToDismissState = swipeToDismissState,
-                    onUpgrades = { navController.navigate("upgrades/${id.name}") },
-                )
-            }
-            composable(UPGRADES) { entry ->
-                val id = BuildingId.valueOf(entry.arguments?.getString("id") ?: return@composable)
-                val live = viewModel.liveState() ?: return@composable
-                UpgradeScreen(id = id, state = live, viewModel = viewModel)
-            }
+            away?.let { AwayCard(it, onDismiss = viewModel::dismissAway) }
         }
+    }
+}
+
+/** "While you were away": what the buildings earned while the game was closed. */
+@Composable
+private fun AwayCard(report: AwayReport, onDismiss: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.72f))
+            .pointerInput(Unit) { detectTapGestures { onDismiss() } },
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.padding(horizontal = 28.dp),
+        ) {
+            Text("While you were away", fontSize = 13.sp, color = Color.White.copy(alpha = 0.8f))
+            Text(formatAway(report.seconds), fontSize = 12.sp, color = Color.White.copy(alpha = 0.6f))
+            Text(
+                "+\$${BigNumber.format(report.earned)}",
+                fontSize = 30.sp,
+                fontWeight = FontWeight.Black,
+                color = Gold,
+            )
+            if (report.storageFilled) {
+                Text(
+                    "Some storage filled up. Upgrade Storage to bank more.",
+                    fontSize = 11.sp,
+                    textAlign = TextAlign.Center,
+                    color = Warn,
+                )
+            }
+            Text("Tap to continue", fontSize = 10.sp, color = Color.White.copy(alpha = 0.6f))
+        }
+    }
+}
+
+/** "3d 4h", "2h 13m", "45m", "50s". */
+private fun formatAway(seconds: Double): String {
+    val total = seconds.toLong()
+    val d = total / 86_400
+    val h = total % 86_400 / 3_600
+    val m = total % 3_600 / 60
+    return when {
+        d > 0 -> "${d}d ${h}h"
+        h > 0 -> "${h}h ${m}m"
+        m > 0 -> "${m}m"
+        else -> "${total}s"
     }
 }
 
