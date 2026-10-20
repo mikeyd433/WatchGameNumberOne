@@ -91,7 +91,7 @@ class EconomyTest {
 
     @Test fun unbuiltBuildingsCannotBeUnlocked() {
         val rich = Settings.newGame().withMoney(1e9)
-        assertNull(Economy.unlock(rich, town, BuildingId.BARBER_SHOP))
+        assertNull(Economy.unlock(rich, town, BuildingId.RADIO_STATION))
     }
 
     @Test fun upgradeCostsGrow() {

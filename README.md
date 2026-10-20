@@ -9,25 +9,28 @@ Design spec: [docs/SPEC.md](docs/SPEC.md) (referenced below as §N).
 
 ## What's playable now
 
-Small Town (§6), first slice:
+Small Town (§6):
 
-- **Overworld** (§4): a low-poly 3D street rendered with Filament. Turn the bezel
-  to walk; 4 detents per building, a tick per detent, a click when you reach a
-  doorway, and it snaps to the nearest door when you stop. Tap to enter or buy.
-  Money and income curve along the top; portal progress along the bottom.
-- **Bakery** (touch, swipe): knead the dough with 15 swipes in 7 seconds. It
-  turns golden as it gets springy and puffs flour.
-- **Water Tower** (bezel, spin): crank the pump to fill the tank in 8 seconds.
-  Crank faster than ~9 detents/s and the pipe sprays, wasting water.
-- **All three upgrade tracks** per building, paid in that building's credits:
-  Skill (credits per play), Automation (money per second), Storage (hours banked).
-- **Locked buildings 3–5** (Barber, Radio, Clock Tower) as silhouettes with prices,
-  and the **gatekeeper** dressed as a tour guide next to the portal. These aren't
-  enterable yet.
-- Save/load with DataStore. Money only accrues while the game is on screen.
+- **Overworld** (§4): a low-poly 3D street in a PS1 style. Turn the bezel to
+  walk (6 detents per building, a tick per detent, a click at doors); you can
+  stop anywhere, and stopping one detent from a door finishes the walk to it.
+  The name of the door you're at floats above it. Tap to enter or buy. Money
+  and income curve along the top; portal progress along the bottom.
+- **Bakery** (touch): 3D arrows pop up over the dough; swipe each way to knead.
+  Clear 10 in 8 seconds; full marks at a 4.5 s par.
+- **Water Tower** (bezel spin): crank the pump to fill the tank in 8 seconds.
+  A pressure gauge shows when you're cranking too fast and spraying.
+- **Barber Shop** (bezel precision): dial the swivel chair to the gold mark on
+  the floor and hold still to snip. Four snips in 9 seconds; par 5 s.
+- **Upgrades**: Skill, Automation and Storage per building, paid in that
+  building's credits.
+- **Offline earnings** (§13): buildings earn while the game is closed, up to
+  their Storage, with a "While you were away" card on return.
+- Locked Radio Station and Clock Tower, and the gatekeeper by the portal, are
+  shown but not playable yet.
 
-Not yet: offline payout on resume (Storage is tracked but nothing pays out from
-it yet), particles, the arcade cabinet, the gatekeeper's crank payment, tokens.
+Not yet: Radio Station, Clock Tower, the gatekeeper's crank payment, portal,
+overflow bonus, tokens, global upgrades, the arcade cabinet, particles.
 
 ## Layout
 

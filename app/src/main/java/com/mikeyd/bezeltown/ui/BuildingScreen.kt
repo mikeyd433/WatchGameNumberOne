@@ -45,6 +45,7 @@ import androidx.wear.compose.material.Text
 import com.mikeyd.bezeltown.GameViewModel
 import com.mikeyd.bezeltown.core.economy.PlayOutcome
 import com.mikeyd.bezeltown.core.format.BigNumber
+import com.mikeyd.bezeltown.core.microgame.BarberGame
 import com.mikeyd.bezeltown.core.microgame.KneadGame
 import com.mikeyd.bezeltown.core.microgame.Microgame
 import com.mikeyd.bezeltown.core.microgame.PumpGame
@@ -54,6 +55,7 @@ import com.mikeyd.bezeltown.core.model.MicrogameId
 import com.mikeyd.bezeltown.input.BezelDetents
 import com.mikeyd.bezeltown.render.FilamentSurface
 import com.mikeyd.bezeltown.render.scenes.BakeryScene
+import com.mikeyd.bezeltown.render.scenes.BarberScene
 import com.mikeyd.bezeltown.render.scenes.MicrogameScene
 import com.mikeyd.bezeltown.render.scenes.WaterTowerScene
 import kotlin.math.roundToInt
@@ -73,11 +75,13 @@ private data class GameCopy(val verb: String, val hint: String, val win: String,
 private fun copyFor(game: MicrogameId) = when (game) {
     MicrogameId.KNEAD -> GameCopy("KNEAD!", "Swipe the way the arrows point", "SPRINGY!", "Still lumpy…")
     MicrogameId.PUMP -> GameCopy("PUMP!", "Crank the bezel. Not too fast!", "FULL!", "Bone dry…")
+    MicrogameId.BARBER -> GameCopy("SNIP!", "Turn the chair to the gold mark and hold", "FRESH CUT!", "Botched it…")
 }
 
 private fun newGame(game: MicrogameId): Microgame = when (game) {
     MicrogameId.KNEAD -> KneadGame()
     MicrogameId.PUMP -> PumpGame()
+    MicrogameId.BARBER -> BarberGame()
 }
 
 /**
@@ -113,6 +117,7 @@ fun BuildingScreen(
     var frame by remember { mutableIntStateOf(0) }
     var lastCleared by remember { mutableIntStateOf(0) }
     var lastMistakes by remember { mutableIntStateOf(0) }
+    var wasAligned by remember { mutableStateOf(false) }
 
     fun start() {
         val g = newGame(microgame)
@@ -120,6 +125,7 @@ fun BuildingScreen(
         scene?.game = g
         lastCleared = 0
         lastMistakes = 0
+        wasAligned = false
         countdown = COUNTDOWN_SECONDS
         phase = Phase.COUNTDOWN
         haptics.click()
@@ -139,6 +145,13 @@ fun BuildingScreen(
                     if (g.mistakes > lastMistakes) haptics.heavy()
                     lastCleared = g.cleared
                     lastMistakes = g.mistakes
+                }
+                if (g is BarberGame) {
+                    // A click when the chair lands on the mark; a heavy snip when the hold completes.
+                    if (g.snips > lastCleared) haptics.heavy()
+                    else if (g.aligned && !wasAligned) haptics.click()
+                    lastCleared = g.snips
+                    wasAligned = g.aligned
                 }
                 if (g.finished) {
                     outcome = viewModel.recordPlay(id, g.score)
@@ -202,6 +215,7 @@ fun BuildingScreen(
                 val created: MicrogameScene = when (microgame) {
                     MicrogameId.KNEAD -> BakeryScene(engine)
                     MicrogameId.PUMP -> WaterTowerScene(engine)
+                    MicrogameId.BARBER -> BarberScene(engine)
                 }
                 created.frameListener = { dt -> latestOnFrame(dt) }
                 scene = created
@@ -257,6 +271,7 @@ private fun PlayingOverlay(g: Microgame, frame: () -> Int) {
     EdgeArc(progress = g.timeLeftFraction, color = Gold, startAngle = 270f, sweep = 360f, strokeWidth = 6f)
     val status = when (g) {
         is KneadGame -> "${g.cleared}/${KneadGame.TARGET_ARROWS}"
+        is BarberGame -> "${g.snips}/${BarberGame.SNIPS} snips"
         else -> "${(g.progress * 100).roundToInt()}%"
     }
     BottomCurvedText(status)

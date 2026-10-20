@@ -1,5 +1,6 @@
 package com.mikeyd.bezeltown.core
 
+import com.mikeyd.bezeltown.core.microgame.BarberGame
 import com.mikeyd.bezeltown.core.microgame.KneadGame
 import com.mikeyd.bezeltown.core.microgame.PumpGame
 import org.junit.Assert.assertEquals
@@ -133,5 +134,66 @@ class MicrogameTest {
         g.update(100f)
         assertFalse(g.succeeded)
         assertEquals(30, g.score) // half full
+    }
+
+    /** Turns the chair the short way to the mark, one detent at a time. */
+    private fun dialToMark(g: BarberGame) {
+        while (!g.aligned) {
+            val diff = Math.floorMod(g.targetStep - g.chairStep, BarberGame.STEPS)
+            g.onDetents(if (diff <= BarberGame.STEPS / 2) 1 else -1)
+        }
+    }
+
+    @Test fun barberSnipsAfterHoldingOnTheMark() {
+        val g = BarberGame(Random(4))
+        assertFalse(g.aligned)
+        dialToMark(g)
+        g.update(0.2f)
+        assertEquals(0, g.snips)
+        g.update(0.2f)
+        assertEquals(1, g.snips)
+        assertFalse(g.aligned) // the mark moved on
+    }
+
+    @Test fun movingRestartsTheHold() {
+        val g = BarberGame(Random(4))
+        dialToMark(g)
+        g.update(0.3f)
+        g.onDetents(1)
+        g.onDetents(-1)
+        g.update(0.3f)
+        assertEquals(0, g.snips)
+        g.update(0.1f)
+        assertEquals(1, g.snips)
+    }
+
+    @Test fun marksAreAlwaysAProperTurnAway() {
+        val g = BarberGame(Random(11))
+        repeat(BarberGame.SNIPS - 1) {
+            val diff = Math.floorMod(g.targetStep - g.chairStep, BarberGame.STEPS)
+            val turn = minOf(diff, BarberGame.STEPS - diff)
+            assertTrue(turn in BarberGame.MIN_TURN..BarberGame.MAX_TURN)
+            dialToMark(g)
+            g.update(0.4f)
+        }
+    }
+
+    @Test fun fullHaircutUnderParScores100() {
+        val g = BarberGame(Random(8))
+        while (!g.finished) {
+            dialToMark(g)
+            g.update(0.4f)
+        }
+        assertTrue(g.succeeded)
+        assertEquals(BarberGame.SNIPS, g.snips)
+        assertEquals(100, g.score) // 4 x 0.4s = 1.6s, well under par
+    }
+
+    @Test fun chairWrapsAroundFullCircle() {
+        val g = BarberGame(Random(1))
+        g.onDetents(-1)
+        assertEquals(BarberGame.STEPS - 1, g.chairStep)
+        g.onDetents(BarberGame.STEPS + 2)
+        assertEquals(1, g.chairStep)
     }
 }
