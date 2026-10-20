@@ -122,12 +122,13 @@ dependencies {
     implementation(libs.filament.android)
 }
 
-// An unsigned bundle is useless to Play, so fail early with instructions.
-tasks.matching { it.name == "bundlePlay" }.configureEach {
-    doFirst {
-        check(hasUploadKey) {
+// An unsigned bundle is useless to Play. Fail before any task runs, so no
+// unsigned .aab is ever left behind in build/outputs.
+gradle.taskGraph.whenReady {
+    if (!hasUploadKey && allTasks.any { it.path == ":app:bundlePlay" }) {
+        throw GradleException(
             "bundlePlay needs the Play upload key: set BEZEL_UPLOAD_KEYSTORE (path to the .p12) " +
-                "and BEZEL_UPLOAD_PASSWORD."
-        }
+                "and BEZEL_UPLOAD_PASSWORD.",
+        )
     }
 }
