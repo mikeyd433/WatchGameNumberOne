@@ -2,6 +2,15 @@
 
 Wear OS incremental game. See README.md for layout and docs/SPEC.md for the design.
 
+## Game design: ask first
+
+- Before building a new building, microgame, setting, or other gameplay feature,
+  describe the proposal to the owner (what it is, how it plays, its input and
+  rough tuning) and wait for approval. This applies even when the idea comes
+  straight from docs/SPEC.md: the spec is a draft, not a sign-off.
+- Changing how an existing game plays (rules, goals, controls, scoring) needs
+  the same check-in. Bug fixes, performance work and tooling don't.
+
 ## Git workflow
 
 - Default to landing work on `main`. When a change is done and verified, push it
