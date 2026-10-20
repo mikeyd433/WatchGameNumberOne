@@ -1,7 +1,5 @@
 package com.mikeyd.bezeltown.render.scenes
 
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.ui.geometry.Offset
 import com.google.android.filament.Camera
 import com.google.android.filament.Engine
 import com.google.android.filament.MaterialInstance
@@ -11,6 +9,7 @@ import com.mikeyd.bezeltown.render.Fog
 import com.mikeyd.bezeltown.render.LinearColor
 import com.mikeyd.bezeltown.render.LinearColor.Companion.srgb
 import com.mikeyd.bezeltown.render.MeshBuilder
+import com.mikeyd.bezeltown.render.PixelFont
 import com.mikeyd.bezeltown.render.ProjectingCamera
 import com.mikeyd.bezeltown.render.SILHOUETTE
 import com.mikeyd.bezeltown.render.V3
@@ -21,6 +20,9 @@ import kotlin.math.sin
 /** What the overworld needs to know about each of the five buildings. */
 data class BuildingVisual(val unlocked: Boolean, val activity: Float)
 
+/** One line of text on a pop-up sign, in sRGB hex. */
+data class SignLine(val text: String, val color: Int)
+
 /**
  * The Small Town street: arcade cabinet, five buildings, and the gatekeeper's
  * portal in a row, with the tiny walker in front.
@@ -28,9 +30,6 @@ data class BuildingVisual(val unlocked: Boolean, val activity: Float)
 // Dusk sky; distant hills fade into it.
 class OverworldScene(engine: Engine, private val walker: Walker) :
     FilamentScene(engine, srgb(0x6A5A9E), Fog(near = 11f, far = 22f)) {
-    /** Screen positions of each slot's label, refreshed every frame. Null when off screen. */
-    val labelPositions = mutableStateListOf<Offset?>().apply { repeat(SLOT_COUNT) { add(null) } }
-
     private val camera = ProjectingCamera()
     private val buildingMaterials: List<MaterialInstance>
     private var visuals = List(5) { BuildingVisual(unlocked = false, activity = 0f) }
@@ -47,6 +46,11 @@ class OverworldScene(engine: Engine, private val walker: Walker) :
     private var walkPhase = 0f
     private var facing = 0f
     private var cameraX = walker.position * SPACING
+
+    // Pop-up name signs, one per slot: the mesh, what it says, and how far it's risen (0..1).
+    private val signs = IntArray(SLOT_COUNT) { -1 }
+    private val signText = arrayOfNulls<List<SignLine>>(SLOT_COUNT)
+    private val signRise = FloatArray(SLOT_COUNT)
 
     init {
         addMesh(scenery())
@@ -91,6 +95,7 @@ class OverworldScene(engine: Engine, private val walker: Walker) :
 
     override fun onFrame(dt: Float) {
         time += dt
+        updateSigns(dt)
 
         // Walker.
         val x = walker.position * SPACING
@@ -135,12 +140,81 @@ class OverworldScene(engine: Engine, private val walker: Walker) :
         cameraX = targetX
         val aspect = viewportWidth.toFloat() / viewportHeight.coerceAtLeast(1)
         this.camera.apply(camera, V3(cameraX, 2.1f, 8.6f), V3(cameraX, 1.25f, 0f), fovYDeg = 30f, aspect = aspect)
+    }
 
-        for (slot in 0 until SLOT_COUNT) {
-            val p = this.camera.project(slotX(slot), LABEL_Y[slot], BUILDING_Z, viewportWidth, viewportHeight)
-            val offset = p?.let { Offset(it.first, it.second) }
-            if (labelPositions[slot] != offset) labelPositions[slot] = offset
+    /** Sets what each slot's sign says. Only signs whose text changed are rebuilt. */
+    fun setSigns(content: List<List<SignLine>>) {
+        content.forEachIndexed { slot, lines ->
+            if (slot >= SLOT_COUNT || signText[slot] == lines) return@forEachIndexed
+            if (signs[slot] >= 0) removeMesh(signs[slot])
+            signs[slot] = addMesh(signMesh(lines))
+            signText[slot] = lines
+            placeSign(slot)
         }
+    }
+
+    /** Raises the sign of the door you're standing at and lowers the rest. */
+    private fun updateSigns(dt: Float) {
+        val door = walker.doorSlot
+        for (slot in 0 until SLOT_COUNT) {
+            val target = if (slot == door) 1f else 0f
+            val rate = if (target > signRise[slot]) SIGN_RISE_RATE else SIGN_FALL_RATE
+            signRise[slot] = if (target > signRise[slot]) {
+                (signRise[slot] + dt * rate).coerceAtMost(1f)
+            } else {
+                (signRise[slot] - dt * rate).coerceAtLeast(0f)
+            }
+            placeSign(slot)
+        }
+    }
+
+    private fun placeSign(slot: Int) {
+        val entity = signs[slot]
+        if (entity < 0) return
+        val t = signRise[slot]
+        if (t <= 0f) {
+            place(entity, sx = 0f, sy = 0f, sz = 0f)
+            return
+        }
+        // Springs up out of the ground with a little overshoot.
+        val q = t - 1f
+        val rise = 1f + 2.70158f * q * q * q + 1.70158f * q * q
+        place(entity, x = slotX(slot), z = SIGN_Z, sy = rise.coerceAtLeast(0.01f))
+    }
+
+    /**
+     * A wooden sign on two posts with each line spelled out in raised pixel
+     * blocks. Built around x = 0 with its feet at y = 0.
+     */
+    private fun signMesh(lines: List<SignLine>): MeshBuilder {
+        val b = MeshBuilder(seed = 9)
+        val p = SIGN_PIXEL
+        val widest = lines.maxOf { PixelFont.width(it.text) }
+        val textHeight = lines.size * PixelFont.HEIGHT + (lines.size - 1) * SIGN_LINE_GAP
+        val boardW = (widest + 2 * SIGN_MARGIN) * p
+        val boardH = (textHeight + 2 * SIGN_MARGIN) * p
+        val boardBottom = SIGN_HEIGHT
+        val boardTop = boardBottom + boardH
+
+        for (side in floatArrayOf(-1f, 1f)) {
+            b.block(side * (boardW / 2f - 0.18f), 0f, -0.02f, 0.09f, boardBottom + 0.1f, 0.09f, srgb(0x5A3B22))
+        }
+        b.box(0f, boardBottom + boardH / 2f, 0f, boardW, boardH, SIGN_BOARD_DEPTH, srgb(0x3B2A1E))
+        b.box(0f, boardTop + p * 0.4f, 0f, boardW + p, p * 0.8f, SIGN_BOARD_DEPTH + 0.02f, srgb(0x6E4A2C))
+
+        val frontZ = SIGN_BOARD_DEPTH / 2f + SIGN_LETTER_DEPTH / 2f
+        lines.forEachIndexed { row, line ->
+            val color = srgb(line.color)
+            val lineLeft = -PixelFont.width(line.text) * p / 2f
+            val lineTop = boardTop - (SIGN_MARGIN + row * (PixelFont.HEIGHT + SIGN_LINE_GAP)) * p
+            PixelFont.forEachPixel(line.text) { x, y ->
+                b.box(
+                    lineLeft + (x + 0.5f) * p, lineTop - (y + 0.5f) * p, frontZ,
+                    p * 0.92f, p * 0.92f, SIGN_LETTER_DEPTH, color,
+                )
+            }
+        }
+        return b
     }
 
     // ---- Models. Each is built around its own ground-center origin. ----
@@ -290,8 +364,18 @@ class OverworldScene(engine: Engine, private val walker: Walker) :
         const val SPACING = 3.4f
         const val BUILDING_Z = -1.0f
         const val WALK_Z = 0.8f
-        /** World height of each slot's floating label. */
-        private val LABEL_Y = floatArrayOf(1.95f, 2.85f, 3.05f, 2.0f, 2.85f, 3.05f, 2.6f)
+
+        // Pop-up signs. One font pixel is SIGN_PIXEL world units: about two
+        // rendered pixels at the overworld camera, the smallest that stays legible.
+        private const val SIGN_PIXEL = 0.07f
+        private const val SIGN_MARGIN = 2
+        private const val SIGN_LINE_GAP = 2
+        private const val SIGN_HEIGHT = 1.15f
+        private const val SIGN_Z = 0.25f
+        private const val SIGN_BOARD_DEPTH = 0.08f
+        private const val SIGN_LETTER_DEPTH = 0.07f
+        private const val SIGN_RISE_RATE = 4f
+        private const val SIGN_FALL_RATE = 6f
 
         fun slotX(slot: Int) = slot * SPACING
     }

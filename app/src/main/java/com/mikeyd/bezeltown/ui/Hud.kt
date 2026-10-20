@@ -10,7 +10,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -21,7 +20,6 @@ import androidx.wear.compose.foundation.CurvedTextStyle
 import androidx.wear.compose.foundation.background
 import androidx.wear.compose.foundation.basicCurvedText
 import androidx.wear.compose.foundation.padding
-import kotlin.math.roundToInt
 
 val Gold = Color(0xFFFFD45C)
 val Ink = Color(0xFF1B1F2A)
@@ -78,18 +76,5 @@ fun EdgeArc(
         if (progress > 0f) {
             drawArc(color, startAngle, sweep * progress.coerceIn(0f, 1f), false, topLeft, arcSize, style = Stroke(stroke, cap = StrokeCap.Round))
         }
-    }
-}
-
-/**
- * Places the content so its bottom-center sits on [anchor] (in pixels within the
- * parent). Reads the anchor during placement only, so moving it every frame
- * doesn't recompose. Hidden while the anchor is null.
- */
-fun Modifier.anchoredAbove(anchor: () -> Offset?): Modifier = layout { measurable, constraints ->
-    val placeable = measurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
-    layout(constraints.maxWidth, constraints.maxHeight) {
-        val p = anchor() ?: return@layout
-        placeable.place((p.x - placeable.width / 2f).roundToInt(), (p.y - placeable.height).roundToInt())
     }
 }

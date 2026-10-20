@@ -41,6 +41,7 @@ import com.mikeyd.bezeltown.input.BezelDetents
 import com.mikeyd.bezeltown.render.FilamentSurface
 import com.mikeyd.bezeltown.render.scenes.BuildingVisual
 import com.mikeyd.bezeltown.render.scenes.OverworldScene
+import com.mikeyd.bezeltown.render.scenes.SignLine
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
@@ -79,7 +80,11 @@ fun OverworldScreen(
         val rate = Economy.incomePerSecond(def, b.automationLevel, state.totalBonus)
         BuildingVisual(unlocked = b.unlocked, activity = (rate / (def.incomePerLevel * 10).coerceAtLeast(1e-9)).toFloat().coerceIn(0f, 1f))
     }
-    SideEffect { scene?.setBuildings(visuals) }
+    val signs = (0 until OverworldScene.SLOT_COUNT).map { signFor(it, state, viewModel) }
+    SideEffect {
+        scene?.setBuildings(visuals)
+        scene?.setSigns(signs)
+    }
 
     fun buildingAt(slot: Int): BuildingId? = setting.buildings.getOrNull(slot - 1)?.id
 
@@ -135,6 +140,7 @@ fun OverworldScreen(
             createScene = { engine ->
                 OverworldScene(engine, walker).also { created ->
                     created.setBuildings(visuals)
+                    created.setSigns(signs)
                     created.frameListener = { dt ->
                         walker.update(dt)?.let(::onWalkEvent)
                         val slot = walker.doorSlot ?: -1
@@ -144,23 +150,6 @@ fun OverworldScreen(
                 }
             },
         )
-
-        // Floating labels: names over open buildings, prices over locked ones.
-        scene?.let { s ->
-            for (slot in 0 until OverworldScene.SLOT_COUNT) {
-                val (text, color) = labelFor(slot, state, viewModel)
-                Text(
-                    text = text,
-                    color = color,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier
-                        .anchoredAbove { s.labelPositions.getOrNull(slot) }
-                        .background(Ink.copy(alpha = 0.6f), RoundedCornerShape(6.dp))
-                        .padding(horizontal = 5.dp, vertical = 1.dp),
-                )
-            }
-        }
 
         TopCurvedText("\$${BigNumber.format(state.setting.money)}  +${BigNumber.format(income)}/s", Gold)
 
@@ -186,22 +175,36 @@ fun OverworldScreen(
     }
 }
 
-private fun labelFor(slot: Int, state: GameState, viewModel: GameViewModel): Pair<String, Color> {
+/** What the pop-up sign at [slot] says: the name, plus the price while it's locked. */
+private fun signFor(slot: Int, state: GameState, viewModel: GameViewModel): List<SignLine> {
     val setting = viewModel.setting(state)
     return when (slot) {
-        ARCADE_SLOT -> "Arcade" to Color.White
-        GATE_SLOT -> "Portal" to Color(0xFFD9CCFF)
+        ARCADE_SLOT -> listOf(SignLine("ARCADE", SIGN_NAME))
+        GATE_SLOT -> listOf(
+            SignLine("PORTAL", SIGN_PORTAL),
+            SignLine("\$${BigNumber.format(setting.portalThreshold)}", SIGN_PRICE),
+        )
         else -> {
             val def = setting.buildings[slot - 1]
             val building = state.building(def.id)
+            val name = SignLine(def.name.uppercase(), SIGN_NAME)
             when {
-                building.unlocked -> def.name to Color.White
-                state.setting.money >= def.unlockCost && def.microgame != null -> "\$${BigNumber.format(def.unlockCost)}" to Good
-                else -> "\$${BigNumber.format(def.unlockCost)}" to Gold
+                building.unlocked -> listOf(name)
+                def.microgame == null -> listOf(name, SignLine("SOON", SIGN_SOON))
+                else -> {
+                    val affordable = state.setting.money >= def.unlockCost
+                    listOf(name, SignLine("\$${BigNumber.format(def.unlockCost)}", if (affordable) SIGN_AFFORD else SIGN_PRICE))
+                }
             }
         }
     }
 }
+
+private const val SIGN_NAME = 0xFFF4D6
+private const val SIGN_PORTAL = 0xD9CCFF
+private const val SIGN_PRICE = 0xFFD45C
+private const val SIGN_AFFORD = 0x7CFFB2
+private const val SIGN_SOON = 0x9AA8B8
 
 private fun hintFor(slot: Int, state: GameState, viewModel: GameViewModel): String? {
     if (slot !in 1..5) return null

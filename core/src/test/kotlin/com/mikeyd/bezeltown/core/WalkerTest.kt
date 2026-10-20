@@ -17,10 +17,10 @@ class WalkerTest {
         return events
     }
 
-    @Test fun fourDetentsReachNextDoor() {
+    @Test fun sixDetentsReachNextDoor() {
         val w = Walker(slotCount = 7, startSlot = 1)
-        val events = w.onDetents(4)
-        assertEquals(listOf(Event.Step, Event.Step, Event.Step, Event.Doorway(2)), events)
+        val events = w.onDetents(6)
+        assertEquals(List(5) { Event.Step } + Event.Doorway(2), events)
         settle(w)
         assertEquals(2, w.doorSlot)
         assertEquals(2f, w.position, 0f)
@@ -28,44 +28,44 @@ class WalkerTest {
 
     @Test fun walkingBackwards() {
         val w = Walker(slotCount = 7, startSlot = 3)
-        assertEquals(Event.Doorway(2), w.onDetents(-4).last())
+        assertEquals(Event.Doorway(2), w.onDetents(-6).last())
     }
 
     @Test fun clampsAtEnds() {
         val w = Walker(slotCount = 7, startSlot = 0)
         assertEquals(emptyList<Event>(), w.onDetents(-3))
         w.onDetents(100)
-        assertEquals(24, w.targetStep)
+        assertEquals(36, w.targetStep)
     }
 
-    @Test fun snapsForwardPastHalfway() {
+    @Test fun oneDetentShortOfADoorFinishesTheWalk() {
         val w = Walker(slotCount = 7, startSlot = 1)
-        w.onDetents(3)
+        w.onDetents(5)
         assertNull(w.doorSlot)
         assertEquals(listOf<Event>(Event.Doorway(2)), settle(w))
         assertEquals(2, w.doorSlot)
     }
 
-    @Test fun snapsBackBeforeHalfway() {
+    @Test fun oneDetentPastADoorStepsBack() {
         val w = Walker(slotCount = 7, startSlot = 1)
         w.onDetents(1)
         settle(w)
         assertEquals(1, w.doorSlot)
     }
 
-    @Test fun exactHalfwaySnapsInWalkingDirection() {
-        val forward = Walker(slotCount = 7, startSlot = 1).apply { onDetents(2) }
-        settle(forward)
-        assertEquals(2, forward.doorSlot)
-
-        val backward = Walker(slotCount = 7, startSlot = 3).apply { onDetents(-2) }
-        settle(backward)
-        assertEquals(2, backward.doorSlot)
+    @Test fun stoppingBetweenDoorsStaysPut() {
+        for (detents in 2..4) {
+            val w = Walker(slotCount = 7, startSlot = 1)
+            w.onDetents(detents)
+            assertEquals(emptyList<Event>(), settle(w))
+            assertNull(w.doorSlot)
+            assertEquals(1f + detents / 6f, w.position, 1e-4f)
+        }
     }
 
     @Test fun noDoorWhileStillWalking() {
         val w = Walker(slotCount = 7, startSlot = 1)
-        w.onDetents(4)
+        w.onDetents(6)
         w.update(1f / 60f)
         assertNull(w.doorSlot)
     }

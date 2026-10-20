@@ -32,7 +32,7 @@ abstract class FilamentScene(
         private set
 
     private val skybox = Skybox.Builder().color(skyColor.r, skyColor.g, skyColor.b, 1f).build(engine)
-    private val meshes = mutableListOf<Mesh>()
+    private val meshes = mutableMapOf<Int, Mesh>()
     private val entities = mutableListOf<Int>()
     private val materialInstances = mutableListOf<MaterialInstance>()
     private val scratch = FloatArray(16)
@@ -94,8 +94,9 @@ abstract class FilamentScene(
         material: MaterialInstance = baseMaterial,
         parent: Int? = null,
     ): Int {
-        val mesh = builder.build(engine).also { meshes += it }
+        val mesh = builder.build(engine)
         val entity = EntityManager.get().create()
+        meshes[entity] = mesh
         createTransform(entity, parent)
         RenderableManager.Builder(1)
             .boundingBox(mesh.bounds)
@@ -108,6 +109,15 @@ abstract class FilamentScene(
         scene.addEntity(entity)
         entities += entity
         return entity
+    }
+
+    /** Removes a mesh added with [addMesh] and frees its buffers. */
+    protected fun removeMesh(entity: Int) {
+        scene.removeEntity(entity)
+        engine.destroyEntity(entity)
+        EntityManager.get().destroy(entity)
+        entities.remove(entity)
+        meshes.remove(entity)?.destroy(engine)
     }
 
     /** Sets an entity's local transform: translate, then rotate Y, X, Z, then scale. */
@@ -145,7 +155,7 @@ abstract class FilamentScene(
             EntityManager.get().destroy(entity)
         }
         entities.clear()
-        meshes.forEach { it.destroy(engine) }
+        meshes.values.forEach { it.destroy(engine) }
         meshes.clear()
         materialInstances.forEach { engine.destroyMaterialInstance(it) }
         materialInstances.clear()
@@ -154,17 +164,8 @@ abstract class FilamentScene(
     }
 }
 
-/**
- * A perspective camera whose matrices we also keep on the CPU, so screens can
- * project 3D points to place Compose labels over the scene.
- */
+/** Points a Filament camera with a perspective projection. */
 class ProjectingCamera {
-    private val view = FloatArray(16)
-    private val projection = FloatArray(16)
-    private val viewProjection = FloatArray(16)
-    private val point = FloatArray(4)
-    private val clip = FloatArray(4)
-
     fun apply(
         camera: Camera,
         eye: V3, target: V3,
@@ -177,19 +178,5 @@ class ProjectingCamera {
             target.x.toDouble(), target.y.toDouble(), target.z.toDouble(),
             0.0, 1.0, 0.0,
         )
-        Matrix.perspectiveM(projection, 0, fovYDeg, aspect, near, far)
-        Matrix.setLookAtM(view, 0, eye.x, eye.y, eye.z, target.x, target.y, target.z, 0f, 1f, 0f)
-        Matrix.multiplyMM(viewProjection, 0, projection, 0, view, 0)
-    }
-
-    /** Projects a world point to pixel coordinates (origin top-left), or null if behind the camera. */
-    fun project(x: Float, y: Float, z: Float, width: Int, height: Int): Pair<Float, Float>? {
-        point[0] = x; point[1] = y; point[2] = z; point[3] = 1f
-        Matrix.multiplyMV(clip, 0, viewProjection, 0, point, 0)
-        val w = clip[3]
-        if (w <= 0f) return null
-        val ndcX = clip[0] / w
-        val ndcY = clip[1] / w
-        return (ndcX + 1f) / 2f * width to (1f - ndcY) / 2f * height
     }
 }

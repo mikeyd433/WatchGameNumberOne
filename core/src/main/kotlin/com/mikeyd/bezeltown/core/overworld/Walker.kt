@@ -9,13 +9,14 @@ import kotlin.math.sign
  *
  * Positions are measured in slots (0 = arcade cabinet, 1–5 = buildings,
  * 6 = gatekeeper). Each bezel detent moves the walk target a fraction of a
- * slot; landing on a slot is a doorway. When the bezel goes quiet between
- * doorways, the target snaps to the nearest one.
+ * slot; landing on a slot is a doorway. You can stop anywhere between
+ * doorways; only when the bezel goes quiet within [SNAP_RANGE] detents of a
+ * door does the walker step the rest of the way to it.
  */
 class Walker(
     val slotCount: Int,
     startSlot: Int,
-    val stepsPerSlot: Int = 4,
+    val stepsPerSlot: Int = 6,
 ) {
     sealed interface Event {
         /** Moved one detent between doorways. */
@@ -73,9 +74,18 @@ class Walker(
         val remainder = targetStep % stepsPerSlot
         if (remainder != 0 && idleSeconds >= SNAP_DELAY) {
             val base = targetStep - remainder
-            val goUp = remainder * 2 > stepsPerSlot || (remainder * 2 == stepsPerSlot && lastDirection > 0)
-            targetStep = if (goUp) base + stepsPerSlot else base
-            event = Event.Doorway(targetStep / stepsPerSlot)
+            val toNext = stepsPerSlot - remainder
+            val snapped = when {
+                remainder < toNext -> if (remainder <= SNAP_RANGE) base else null
+                toNext < remainder -> if (toNext <= SNAP_RANGE) base + stepsPerSlot else null
+                // Exactly between two doors only matters if the range reaches the middle.
+                remainder <= SNAP_RANGE -> if (lastDirection > 0) base + stepsPerSlot else base
+                else -> null
+            }
+            if (snapped != null) {
+                targetStep = snapped
+                event = Event.Doorway(targetStep / stepsPerSlot)
+            }
         }
 
         val diff = targetPosition - position
@@ -90,6 +100,8 @@ class Walker(
 
     companion object {
         const val SNAP_DELAY = 0.35f
+        /** Stopping this many detents or fewer from a door finishes the walk to it. */
+        const val SNAP_RANGE = 1
         const val FOLLOW_RATE = 8f
         const val MAX_SPEED = 4f
         const val DOOR_TOLERANCE = 0.2f
