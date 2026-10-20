@@ -13,13 +13,21 @@ import kotlin.math.exp
 import kotlin.math.sin
 import kotlin.random.Random
 
-/** Bakery counter with a lump of dough in the middle. */
-// Dim and warm: the back of the kitchen fades into the dark.
+/**
+ * Bakery counter with a lump of dough in the middle, and the 3D arrow to swipe
+ * floating above it. Dim and warm: the back of the kitchen fades into the dark.
+ */
 class BakeryScene(engine: Engine) : MicrogameScene(engine, srgb(0x4A2E22), Fog(near = 3.6f, far = 8f)) {
     private val camera = ProjectingCamera()
     private val doughMaterial = tintedMaterial(PALE)
     private val dough: Int
     private val puffs: List<Puff>
+
+    // The arrow to swipe, and a copy that flies off when one is cleared.
+    private val arrowMaterial = tintedMaterial(ARROW_GOLD)
+    private val ghostMaterial = tintedMaterial(ARROW_GREEN)
+    private val arrow: Int
+    private val ghost: Int
 
     private var time = 0f
     private var lastCleared = 0
@@ -39,6 +47,10 @@ class BakeryScene(engine: Engine) : MicrogameScene(engine, srgb(0x4A2E22), Fog(n
         puffs = List(10) {
             Puff(addMesh(MeshBuilder().box(0f, 0f, 0f, 0.12f, 0.12f, 0.12f, srgb(0xFFFFFF))))
         }
+        arrow = addMesh(arrowMesh(), arrowMaterial)
+        ghost = addMesh(arrowMesh(), ghostMaterial)
+        hide(arrow)
+        hide(ghost)
     }
 
     override fun onFrame(dt: Float) {
@@ -71,6 +83,7 @@ class BakeryScene(engine: Engine) : MicrogameScene(engine, srgb(0x4A2E22), Fog(n
             sz = 1f + 0.45f * sz - 0.12f * sx + spread + breathe,
         )
         setTint(doughMaterial, PALE.lerp(GOLDEN, progress.coerceIn(0f, 1f)))
+        updateArrows(knead)
 
         for (p in puffs) {
             if (p.age >= 1f) {
@@ -102,6 +115,85 @@ class BakeryScene(engine: Engine) : MicrogameScene(engine, srgb(0x4A2E22), Fog(n
         }
     }
 
+    private fun updateArrows(knead: KneadGame?) {
+        if (knead == null || knead.finished) {
+            hide(arrow)
+            hide(ghost)
+            return
+        }
+
+        // The arrow being swiped: pops in with a little overshoot, shakes red on a miss.
+        val pop = (knead.arrowAge / ARROW_POP_SECONDS).coerceIn(0f, 1f)
+        val q = pop - 1f
+        val scale = ARROW_SIZE * (1f + 2.70158f * q * q * q + 1.70158f * q * q).coerceAtLeast(0.05f)
+        val missed = knead.mistakeAge < ARROW_SHAKE_SECONDS
+        val shake = if (missed) sin(knead.mistakeAge * 70f) * 0.06f else 0f
+        setTint(arrowMaterial, if (missed) ARROW_RED else ARROW_GOLD, ARROW_ALPHA)
+        // A slow yaw so you can see the arrow's thickness.
+        val yaw = sin(time * 2.2f) * 18f
+        placeArrow(arrow, knead.arrow, offset = 0f, extraX = shake, yaw = yaw, scale = scale)
+
+        // The cleared arrow flies off the way it was swiped and fades out.
+        val gone = knead.lastCleared
+        val t = knead.clearedAge / ARROW_FLY_SECONDS
+        if (gone != null && t < 1f) {
+            setTint(ghostMaterial, ARROW_GREEN, ARROW_ALPHA * (1f - t))
+            placeArrow(ghost, gone, offset = t * 0.9f, extraX = 0f, yaw = yaw, scale = ARROW_SIZE)
+        } else {
+            hide(ghost)
+        }
+    }
+
+    /**
+     * Puts an arrow above the dough, facing the camera and pointing the way to
+     * swipe. [offset] moves it that way along the screen, for the fly-off.
+     */
+    private fun placeArrow(entity: Int, d: KneadGame.Direction, offset: Float, extraX: Float, yaw: Float, scale: Float) {
+        // Screen up is world up tilted away from the camera by ARROW_TILT.
+        val tilt = Math.toRadians(ARROW_TILT.toDouble())
+        val upY = Math.cos(tilt).toFloat()
+        val upZ = -Math.sin(tilt).toFloat()
+        val roll = when (d) {
+            KneadGame.Direction.UP -> 0f
+            KneadGame.Direction.LEFT -> 90f
+            KneadGame.Direction.DOWN -> 180f
+            KneadGame.Direction.RIGHT -> -90f
+        }
+        place(
+            entity,
+            x = ARROW_X + d.x * offset + extraX,
+            y = ARROW_Y + d.y * offset * upY,
+            z = ARROW_Z + d.y * offset * upZ,
+            rotYDeg = yaw,
+            rotXDeg = -ARROW_TILT,
+            rotZDeg = roll,
+            sx = scale, sy = scale, sz = scale,
+        )
+    }
+
+    private fun hide(entity: Int) = place(entity, sx = 0f, sy = 0f, sz = 0f)
+
+    /** A thick arrow pointing +Y in the XY plane, about 2 units long. White, so the tint sets its color. */
+    private fun arrowMesh(): MeshBuilder {
+        val b = MeshBuilder(seed = 3)
+        val white = srgb(0xFFFFFF)
+        val t = ARROW_THICKNESS / 2f
+        val center = V3(0f, 0f, 0f)
+        // Head: a triangular prism.
+        val tip = 1f; val base = 0.05f; val half = 0.85f
+        val f = arrayOf(V3(0f, tip, t), V3(-half, base, t), V3(half, base, t))
+        val k = arrayOf(V3(0f, tip, -t), V3(-half, base, -t), V3(half, base, -t))
+        b.triangle(f[0], f[1], f[2], white, center)
+        b.triangle(k[0], k[2], k[1], white, center)
+        for (i in 0 until 3) {
+            val j = (i + 1) % 3
+            b.quad(f[i], f[j], k[j], k[i], white, center)
+        }
+        // Shaft: a box under the head.
+        b.box(0f, -0.42f, 0f, 0.62f, 0.95f, ARROW_THICKNESS, white)
+        return b
+    }
+
     override fun configureCamera(camera: Camera) {
         val aspect = viewportWidth.toFloat() / viewportHeight.coerceAtLeast(1)
         this.camera.apply(camera, V3(0f, 2.3f, 2.7f), V3(0f, 0.15f, 0f), fovYDeg = 42f, aspect = aspect)
@@ -126,5 +218,21 @@ class BakeryScene(engine: Engine) : MicrogameScene(engine, srgb(0x4A2E22), Fog(n
     companion object {
         private val PALE = srgb(0xF6EBD3)
         private val GOLDEN = srgb(0xE8B864)
+
+        private val ARROW_GOLD = srgb(0xFFD45C)
+        private val ARROW_RED = srgb(0xFF5C5C)
+        private val ARROW_GREEN = srgb(0x7CFFB2)
+        /** Below 1 the arrows are see-through; 0.75 skips a quarter of their pixels. */
+        private const val ARROW_ALPHA = 0.75f
+        private const val ARROW_SIZE = 0.36f
+        private const val ARROW_THICKNESS = 0.35f
+        private const val ARROW_X = 0f
+        private const val ARROW_Y = 1.0f
+        private const val ARROW_Z = 0.15f
+        /** Degrees the arrow leans back so it faces the camera above the counter. */
+        private const val ARROW_TILT = 27f
+        private const val ARROW_POP_SECONDS = 0.15f
+        private const val ARROW_FLY_SECONDS = 0.25f
+        private const val ARROW_SHAKE_SECONDS = 0.3f
     }
 }

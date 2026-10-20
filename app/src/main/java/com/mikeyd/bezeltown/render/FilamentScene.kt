@@ -76,8 +76,9 @@ abstract class FilamentScene(
             materialInstances += it
         }
 
-    protected fun setTint(instance: MaterialInstance, tint: LinearColor) {
-        instance.setParameter("tint", tint.r, tint.g, tint.b, 1f)
+    /** [alpha] below 1 makes it see-through with a pixel pattern (see flat.mat). */
+    protected fun setTint(instance: MaterialInstance, tint: LinearColor, alpha: Float = 1f) {
+        instance.setParameter("tint", tint.r, tint.g, tint.b, alpha)
     }
 
     /** An empty entity with only a transform, for grouping. */

@@ -105,7 +105,7 @@ class KneadGame(private val random: Random = Random.Default) : Microgame(Microga
     }
 
     companion object {
-        const val TARGET_ARROWS = 12
+        const val TARGET_ARROWS = 10
         /** Finger travel, in half-screen units, that counts as a swipe. */
         const val SWIPE_DISTANCE = 0.3f
         const val MISTAKE_PENALTY_SECONDS = 0.5f

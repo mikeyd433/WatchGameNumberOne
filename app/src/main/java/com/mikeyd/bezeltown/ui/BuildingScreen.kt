@@ -60,12 +60,8 @@ import kotlin.math.roundToInt
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.withTransform
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -264,7 +260,6 @@ private fun PlayingOverlay(g: Microgame, frame: () -> Int) {
         else -> "${(g.progress * 100).roundToInt()}%"
     }
     BottomCurvedText(status)
-    if (g is KneadGame) KneadArrow(g)
     if (g is PumpGame) {
         // Upper left, over the sky and the pump's pipe, so the tank stays in view.
         Column(
@@ -315,72 +310,6 @@ private fun PressureGauge(pressure: Float, overLimit: Boolean, modifier: Modifie
 }
 
 private const val GAUGE_MAX = 1.5f
-
-/**
- * The arrow to swipe: pops in, flies off the way it was swiped when cleared,
- * and shakes red on a wrong swipe.
- */
-@Composable
-private fun KneadArrow(g: KneadGame) {
-    Canvas(Modifier.fillMaxSize()) {
-        val center = Offset(size.width / 2f, size.height * 0.42f)
-        val radius = size.minDimension * 0.17f
-
-        g.lastCleared?.let { gone ->
-            val t = g.clearedAge / ARROW_FLY_SECONDS
-            if (t < 1f) {
-                val travel = size.minDimension * 0.35f * t
-                val at = Offset(center.x + gone.x * travel, center.y - gone.y * travel)
-                drawArrow(at, radius, gone, alpha = 1f - t, fill = Good)
-            }
-        }
-
-        val pop = (g.arrowAge / ARROW_POP_SECONDS).coerceIn(0f, 1f)
-        // Ease-out-back: overshoots a little, then settles. A quick "boing".
-        val q = pop - 1f
-        val scale = 1f + 2.70158f * q * q * q + 1.70158f * q * q
-        val shaking = g.mistakeAge < ARROW_SHAKE_SECONDS
-        val shake = if (shaking) sin(g.mistakeAge * 70f) * radius * 0.18f else 0f
-        drawArrow(
-            Offset(center.x + shake, center.y),
-            radius * scale.coerceAtLeast(0.2f),
-            g.arrow,
-            alpha = 1f,
-            fill = if (shaking) Warn else Gold,
-        )
-    }
-}
-
-private fun DrawScope.drawArrow(at: Offset, radius: Float, direction: KneadGame.Direction, alpha: Float, fill: Color) {
-    val degrees = when (direction) {
-        KneadGame.Direction.UP -> 0f
-        KneadGame.Direction.RIGHT -> 90f
-        KneadGame.Direction.DOWN -> 180f
-        KneadGame.Direction.LEFT -> 270f
-    }
-    val path = Path().apply {
-        moveTo(0f, -1f)
-        lineTo(0.85f, -0.1f)
-        lineTo(0.33f, -0.1f)
-        lineTo(0.33f, 0.9f)
-        lineTo(-0.33f, 0.9f)
-        lineTo(-0.33f, -0.1f)
-        lineTo(-0.85f, -0.1f)
-        close()
-    }
-    withTransform({
-        translate(at.x, at.y)
-        rotate(degrees, pivot = Offset.Zero)
-        scale(radius, radius, pivot = Offset.Zero)
-    }) {
-        drawPath(path, Ink.copy(alpha = alpha), style = Stroke(width = 0.28f, join = StrokeJoin.Round))
-        drawPath(path, fill.copy(alpha = alpha))
-    }
-}
-
-private const val ARROW_POP_SECONDS = 0.15f
-private const val ARROW_FLY_SECONDS = 0.25f
-private const val ARROW_SHAKE_SECONDS = 0.3f
 
 @Composable
 private fun Lobby(

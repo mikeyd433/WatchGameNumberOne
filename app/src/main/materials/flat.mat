@@ -1,7 +1,9 @@
 // Unlit material for the PS1-style look. Lighting is baked into vertex colors on
 // the CPU (see MeshBuilder), so the GPU only tints, snaps and fogs.
 //
-// - tint: dims locked buildings into silhouettes and recolors the dough.
+// - tint: dims locked buildings into silhouettes and recolors the dough. Its
+//   alpha makes things see-through the PS1 way: below 1, pixels are skipped in a
+//   4x4 ordered pattern ("screen-door" transparency), so no sorting is needed.
 // - snapGrid: vertices snap to a grid this many cells across each half of the
 //   screen, which gives the PS1 "wobble" as things move.
 // - fogColor / fogRange: linear fog by distance from the camera (near, far).
@@ -33,7 +35,17 @@ vertex {
 fragment {
     void material(inout MaterialInputs material) {
         prepareMaterial(material);
-        vec4 color = getColor() * materialParams.tint;
+        float alpha = materialParams.tint.a;
+        if (alpha < 0.999) {
+            const float bayer[16] = float[16](
+                 0.0,  8.0,  2.0, 10.0,
+                12.0,  4.0, 14.0,  6.0,
+                 3.0, 11.0,  1.0,  9.0,
+                15.0,  7.0, 13.0,  5.0);
+            ivec2 p = ivec2(gl_FragCoord.xy) & 3;
+            if (alpha <= (bayer[p.y * 4 + p.x] + 0.5) / 16.0) discard;
+        }
+        vec4 color = vec4(getColor().rgb * materialParams.tint.rgb, 1.0);
         float d = distance(getWorldPosition(), getWorldCameraPosition());
         vec2 range = materialParams.fogRange;
         float fog = clamp((d - range.x) / max(range.y - range.x, 0.001), 0.0, 1.0);

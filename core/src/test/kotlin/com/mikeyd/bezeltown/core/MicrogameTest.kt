@@ -73,7 +73,7 @@ class MicrogameTest {
         g.update(10f)
         assertTrue(g.finished)
         assertFalse(g.succeeded)
-        assertEquals(30, g.score) // 60 * 6/12
+        assertEquals(36, g.score) // 60 * 6/10
     }
 
     @Test fun steadyCrankingFillsTheTank() {
