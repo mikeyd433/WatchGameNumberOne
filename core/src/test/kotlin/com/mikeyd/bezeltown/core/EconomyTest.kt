@@ -90,8 +90,13 @@ class EconomyTest {
     }
 
     @Test fun unbuiltBuildingsCannotBeUnlocked() {
+        // Every Small Town building has a game now, so test with one that doesn't.
+        val unbuilt = town.copy(
+            buildings = town.buildings.map { if (it.id == BuildingId.CLOCK_TOWER) it.copy(microgame = null) else it },
+        )
         val rich = Settings.newGame().withMoney(1e9)
-        assertNull(Economy.unlock(rich, town, BuildingId.CLOCK_TOWER))
+        assertNull(Economy.unlock(rich, unbuilt, BuildingId.CLOCK_TOWER))
+        assertNotNull(Economy.unlock(rich, town, BuildingId.CLOCK_TOWER))
     }
 
     @Test fun upgradeCostsGrow() {

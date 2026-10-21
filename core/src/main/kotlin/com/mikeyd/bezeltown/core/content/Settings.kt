@@ -99,7 +99,19 @@ object Settings {
                     UpgradeTrack.STORAGE to TrackCost(50.0, 1.5),
                 ),
             ),
-            BuildingDef(BuildingId.CLOCK_TOWER, "Clock Tower", unlockCost = 200_000.0, microgame = null),
+            BuildingDef(
+                id = BuildingId.CLOCK_TOWER,
+                name = "Clock Tower",
+                unlockCost = 200_000.0,
+                microgame = MicrogameId.CLOCK,
+                creditsPerPlay = 28.0,
+                incomePerLevel = 72.0,
+                costs = mapOf(
+                    UpgradeTrack.SKILL to TrackCost(60.0, 1.6),
+                    UpgradeTrack.AUTOMATION to TrackCost(55.0, 1.55),
+                    UpgradeTrack.STORAGE to TrackCost(80.0, 1.5),
+                ),
+            ),
         ),
     )
 

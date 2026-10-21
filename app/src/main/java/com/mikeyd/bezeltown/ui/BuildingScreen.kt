@@ -46,6 +46,7 @@ import com.mikeyd.bezeltown.GameViewModel
 import com.mikeyd.bezeltown.core.economy.PlayOutcome
 import com.mikeyd.bezeltown.core.format.BigNumber
 import com.mikeyd.bezeltown.core.microgame.BarberGame
+import com.mikeyd.bezeltown.core.microgame.ClockGame
 import com.mikeyd.bezeltown.core.microgame.KneadGame
 import com.mikeyd.bezeltown.core.microgame.Microgame
 import com.mikeyd.bezeltown.core.microgame.PumpGame
@@ -57,6 +58,7 @@ import com.mikeyd.bezeltown.input.BezelDetents
 import com.mikeyd.bezeltown.render.FilamentSurface
 import com.mikeyd.bezeltown.render.scenes.BakeryScene
 import com.mikeyd.bezeltown.render.scenes.BarberScene
+import com.mikeyd.bezeltown.render.scenes.ClockScene
 import com.mikeyd.bezeltown.render.scenes.RadioScene
 import com.mikeyd.bezeltown.render.scenes.MicrogameScene
 import com.mikeyd.bezeltown.render.scenes.WaterTowerScene
@@ -77,6 +79,7 @@ private data class GameCopy(val verb: String, val hint: String, val win: String,
 private fun copyFor(game: MicrogameId) = when (game) {
     MicrogameId.KNEAD -> GameCopy("KNEAD!", "Swipe the way the arrows point", "SPRINGY!", "Still lumpy…")
     MicrogameId.PUMP -> GameCopy("PUMP!", "Crank the bezel. Not too fast!", "FULL!", "Bone dry…")
+    MicrogameId.CLOCK -> GameCopy("WIND IT!", "Wind with the bezel, then drag the hands", "BONG!", "Out of time…")
     MicrogameId.RADIO -> GameCopy("TUNE IN!", "Dial to the station and hold", "ON AIR!", "Dead air…")
     MicrogameId.BARBER -> GameCopy("SNIP!", "Turn the chair to the gold mark and hold", "FRESH CUT!", "Botched it…")
 }
@@ -86,6 +89,7 @@ private fun newGame(game: MicrogameId): Microgame = when (game) {
     MicrogameId.PUMP -> PumpGame()
     MicrogameId.BARBER -> BarberGame()
     MicrogameId.RADIO -> RadioGame()
+    MicrogameId.CLOCK -> ClockGame()
 }
 
 /**
@@ -122,6 +126,7 @@ fun BuildingScreen(
     var lastCleared by remember { mutableIntStateOf(0) }
     var lastMistakes by remember { mutableIntStateOf(0) }
     var wasAligned by remember { mutableStateOf(false) }
+    var lastHands by remember { mutableIntStateOf(0) }
 
     fun start() {
         val g = newGame(microgame)
@@ -130,6 +135,7 @@ fun BuildingScreen(
         lastCleared = 0
         lastMistakes = 0
         wasAligned = false
+        lastHands = 0
         countdown = COUNTDOWN_SECONDS
         phase = Phase.COUNTDOWN
         haptics.click()
@@ -153,6 +159,16 @@ fun BuildingScreen(
                 if (g is RadioGame) {
                     if (g.stations > lastCleared) haptics.heavy()
                     lastCleared = g.stations
+                }
+                if (g is ClockGame) {
+                    // A clunk when the wind locks in, a tick each time a hand snaps, a thud on sproing.
+                    val hands = g.hourHand * 12 + g.minuteHand
+                    if (g.phase == ClockGame.Phase.SET && !wasAligned) haptics.heavy()
+                    if (hands != lastHands) haptics.tick()
+                    if (g.sproings > lastCleared) haptics.failure()
+                    wasAligned = g.phase == ClockGame.Phase.SET
+                    lastHands = hands
+                    lastCleared = g.sproings
                 }
                 if (g is BarberGame) {
                     // A click when the chair lands on the mark; a heavy snip when the hold completes.
@@ -182,9 +198,9 @@ fun BuildingScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            // Swiping is the bakery's input, so mid-game only an edge swipe exits.
+            // Swiping is the input for the bakery and the clock hands, so mid-game only an edge swipe exits.
             .then(
-                if (microgame == MicrogameId.KNEAD && phase != Phase.LOBBY) {
+                if ((microgame == MicrogameId.KNEAD || microgame == MicrogameId.CLOCK) && phase != Phase.LOBBY) {
                     Modifier.edgeSwipeToDismiss(swipeToDismissState)
                 } else {
                     Modifier
@@ -195,7 +211,12 @@ fun BuildingScreen(
                 val g = game
                 if (playing && g != null && n != 0) {
                     g.onDetents(n)
-                    if (g is RadioGame) {
+                    if (g is ClockGame) {
+                        // Ratchet ticks while winding; a strained buzz once you're past full.
+                        if (g.phase == ClockGame.Phase.WIND && n > 0) {
+                            if (g.wind > ClockGame.WIND_FULL) haptics.buzz() else haptics.tick()
+                        }
+                    } else if (g is RadioGame) {
                         // Rough and buzzy in the static, a light tick when close, a clean click on the station.
                         when {
                             g.tuned -> haptics.click()
@@ -221,7 +242,9 @@ fun BuildingScreen(
                     val h = size.height.toFloat()
                     val x = change.position.x / w * 2f - 1f
                     val y = 1f - change.position.y / h * 2f
-                    g.onDrag(x, y, drag.x / w * 2f, -drag.y / h * 2f)
+                    // The clock reads touches relative to its face rather than the whole screen.
+                    val scale = if (g is ClockGame) ClockScene.FACE_SCREEN_RADIUS else 1f
+                    g.onDrag(x / scale, y / scale, drag.x / w * 2f / scale, -drag.y / h * 2f / scale)
                     change.consume()
                 }
             },
@@ -234,6 +257,7 @@ fun BuildingScreen(
                     MicrogameId.PUMP -> WaterTowerScene(engine)
                     MicrogameId.BARBER -> BarberScene(engine)
                     MicrogameId.RADIO -> RadioScene(engine)
+                    MicrogameId.CLOCK -> ClockScene(engine)
                 }
                 created.frameListener = { dt -> latestOnFrame(dt) }
                 scene = created
@@ -291,9 +315,21 @@ private fun PlayingOverlay(g: Microgame, frame: () -> Int) {
         is KneadGame -> "${g.cleared}/${KneadGame.TARGET_ARROWS}"
         is BarberGame -> "${g.snips}/${BarberGame.SNIPS} snips"
         is RadioGame -> "${g.stations}/${RadioGame.STATIONS} stations"
+        is ClockGame -> if (g.phase == ClockGame.Phase.WIND) "Wind ${(g.windFraction * 100).roundToInt()}%" else "Drag the hands"
         else -> "${(g.progress * 100).roundToInt()}%"
     }
     BottomCurvedText(status)
+    if (g is ClockGame) {
+        ClockOverlay(
+            winding = g.phase == ClockGame.Phase.WIND,
+            wind = g.windFraction,
+            overwind = g.overwind,
+            sproinging = g.sproingAge < 0.7f,
+            target = g.targetLabel,
+            hourRight = g.hourRight,
+            minuteRight = g.minuteRight,
+        )
+    }
     if (g is RadioGame) {
         // Pass plain values, not the game object: the object stays the same while its
         // contents change, so Compose would skip redrawing and freeze the overlay.
@@ -315,6 +351,67 @@ private fun PlayingOverlay(g: Microgame, frame: () -> Int) {
             if (g.spraying) {
                 Text("TOO FAST!", fontSize = 13.sp, fontWeight = FontWeight.Black, color = Warn)
             }
+        }
+    }
+}
+
+/**
+ * Clock: a mainspring gauge on the left edge while winding (with a red danger
+ * zone past full), then the time to set.
+ */
+@Composable
+private fun ClockOverlay(
+    winding: Boolean,
+    wind: Float,
+    overwind: Float,
+    sproinging: Boolean,
+    target: String,
+    hourRight: Boolean,
+    minuteRight: Boolean,
+) {
+    if (winding) {
+        Canvas(Modifier.fillMaxSize()) {
+            val stroke = 9.dp.toPx()
+            val inset = stroke / 2f + 12.dp.toPx()
+            val arcSize = Size(size.width - inset * 2f, size.height - inset * 2f)
+            val topLeft = Offset(inset, inset)
+            // Angles run clockwise from 3 o'clock, so 135° is the lower left: the gauge
+            // climbs the left edge toward the top, ending in the red over-wind zone.
+            val start = 135f
+            val fullSweep = 70f
+            val dangerSweep = 18f
+            drawArc(Color.White.copy(alpha = 0.25f), start, fullSweep, false, topLeft, arcSize, style = Stroke(stroke, cap = StrokeCap.Round))
+            drawArc(Warn.copy(alpha = 0.35f), start + fullSweep, dangerSweep, false, topLeft, arcSize, style = Stroke(stroke, cap = StrokeCap.Round))
+            drawArc(if (wind >= 1f) Good else Gold, start, fullSweep * wind, false, topLeft, arcSize, style = Stroke(stroke, cap = StrokeCap.Round))
+            if (overwind > 0f) {
+                drawArc(Warn, start + fullSweep, dangerSweep * overwind, false, topLeft, arcSize, style = Stroke(stroke, cap = StrokeCap.Round))
+            }
+        }
+    }
+    Column(
+        modifier = Modifier.fillMaxSize().padding(top = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        if (winding) {
+            Text(
+                if (wind >= 1f) "STOP!" else "WIND IT",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Black,
+                color = if (wind >= 1f) Good else Color.White,
+            )
+        } else {
+            Text("SET", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = 0.8f))
+            Text(target, fontSize = 22.sp, fontWeight = FontWeight.Black, color = Gold)
+            Text(
+                "${if (hourRight) "✓" else "·"} hour   ${if (minuteRight) "✓" else "·"} min",
+                fontSize = 10.sp,
+                color = Color.White.copy(alpha = 0.85f),
+            )
+        }
+    }
+    if (sproinging) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("SPROING!", fontSize = 28.sp, fontWeight = FontWeight.Black, color = Warn)
         }
     }
 }

@@ -1,6 +1,7 @@
 package com.mikeyd.bezeltown.core
 
 import com.mikeyd.bezeltown.core.microgame.BarberGame
+import com.mikeyd.bezeltown.core.microgame.ClockGame
 import com.mikeyd.bezeltown.core.microgame.KneadGame
 import com.mikeyd.bezeltown.core.microgame.PumpGame
 import com.mikeyd.bezeltown.core.microgame.RadioGame
@@ -249,5 +250,96 @@ class MicrogameTest {
         assertEquals("88.0", RadioGame.label(0))
         assertEquals("94.5", RadioGame.label(13))
         assertEquals("108.0", RadioGame.label(RadioGame.STEPS - 1))
+    }
+
+    /** A touch at clock position [pos] (0 = twelve), [radius] out from the center. */
+    private fun touchAt(pos: Int, radius: Float): Pair<Float, Float> {
+        val a = pos * Math.PI / 6
+        return (radius * Math.sin(a)).toFloat() to (radius * Math.cos(a)).toFloat()
+    }
+
+    private fun drag(g: ClockGame, from: Pair<Float, Float>, to: Pair<Float, Float>) {
+        g.onDrag(from.first, from.second, 0f, 0f)
+        g.onDrag(to.first, to.second, 0f, 0f)
+        g.onDragEnd()
+    }
+
+    private fun windUp(g: ClockGame) {
+        g.onDetents(ClockGame.WIND_FULL)
+        g.update(0.4f)
+    }
+
+    @Test fun clockWindsThenLocksWhenYouStop() {
+        val g = ClockGame(Random(1))
+        g.onDetents(-10) // ratchet: no effect
+        assertEquals(0, g.wind)
+        g.onDetents(20)
+        g.update(1f)
+        assertEquals(ClockGame.Phase.WIND, g.phase) // not full yet
+        g.onDetents(16)
+        g.update(0.1f)
+        assertEquals(ClockGame.Phase.WIND, g.phase) // full but still settling
+        g.update(0.3f)
+        assertEquals(ClockGame.Phase.SET, g.phase)
+    }
+
+    @Test fun overwindingSproings() {
+        val g = ClockGame(Random(1))
+        g.onDetents(ClockGame.WIND_FULL + ClockGame.OVERWIND_LIMIT)
+        assertEquals(0, g.sproings) // right at the limit is fine
+        g.onDetents(1)
+        assertEquals(1, g.sproings)
+        assertEquals(ClockGame.WIND_FULL - ClockGame.SPROING_SETBACK, g.wind)
+        assertEquals(ClockGame.SPROING_PENALTY_SECONDS, g.elapsed, 1e-6f)
+        g.update(0.5f)
+        assertEquals(ClockGame.Phase.WIND, g.phase)
+    }
+
+    @Test fun handsCannotMoveWhileWinding() {
+        val g = ClockGame(Random(1))
+        drag(g, touchAt(0, 0.6f), touchAt(5, 0.6f))
+        assertEquals(0, g.minuteHand)
+    }
+
+    @Test fun settingBothHandsRingsTheBell() {
+        val g = ClockGame(Random(6))
+        windUp(g)
+        // Hands start together at twelve: a far-out touch grabs the minute hand first.
+        drag(g, touchAt(0, 0.6f), touchAt(g.targetMinute, 0.6f))
+        assertEquals(g.targetMinute, g.minuteHand)
+        if (!g.finished) {
+            val hourFrom = touchAt(g.hourHand, 0.3f)
+            drag(g, hourFrom, touchAt(g.targetHour, 0.3f))
+        }
+        assertTrue(g.finished)
+        assertTrue(g.succeeded)
+        assertEquals(100, g.score) // well under par
+    }
+
+    @Test fun nearestHandIsTheOneGrabbed() {
+        val g = ClockGame(Random(6))
+        windUp(g)
+        drag(g, touchAt(0, 0.6f), touchAt(6, 0.6f)) // minute hand to :30
+        drag(g, touchAt(1, 0.3f), touchAt(3, 0.3f)) // nearer the hour hand at 12
+        assertEquals(3, g.hourHand)
+        assertEquals(6, g.minuteHand)
+    }
+
+    @Test fun clockTimeoutGivesPartialCredit() {
+        val g = ClockGame(Random(2))
+        g.onDetents(ClockGame.WIND_FULL / 2)
+        g.update(20f)
+        assertTrue(g.finished)
+        assertFalse(g.succeeded)
+        assertEquals(15, g.score) // 60 * (0.5 * 0.5)
+    }
+
+    @Test fun clockLabels() {
+        assertEquals("12:00", ClockGame.label(0, 0))
+        assertEquals("4:15", ClockGame.label(4, 3))
+        assertEquals("11:45", ClockGame.label(11, 9))
+        assertEquals(3, ClockGame.positionAt(1f, 0f))
+        assertEquals(6, ClockGame.positionAt(0f, -1f))
+        assertEquals(9, ClockGame.positionAt(-1f, 0f))
     }
 }

@@ -25,15 +25,18 @@ Small Town (§6):
 - **Radio Station** (bezel precision): tune to the station being called out,
   by the number, the clearing static and the feel of the detents (buzzy in the
   static, a clean click on the station); hold to lock it in. Three stations in
-  10 seconds; par 6 s.
+  12 seconds; par 6 s.
+- **Clock Tower** (both, the finale): crank the bezel to wind the mainspring and
+  stop to lock it in (crank too far past full and it goes sproing), then drag
+  the hands to the time shown; the bell rings when both are right. 12 seconds;
+  par 7 s.
 - **Upgrades**: Skill, Automation and Storage per building, paid in that
   building's credits.
 - **Offline earnings** (§13): buildings earn while the game is closed, up to
   their Storage, with a "While you were away" card on return.
-- The locked Clock Tower and the gatekeeper by the portal are shown but not
-  playable yet.
+- The gatekeeper by the portal is shown but not playable yet.
 
-Not yet: Clock Tower, the gatekeeper's crank payment, portal,
+Not yet: the gatekeeper's crank payment, portal,
 overflow bonus, tokens, global upgrades, the arcade cabinet, particles.
 
 ## Layout
