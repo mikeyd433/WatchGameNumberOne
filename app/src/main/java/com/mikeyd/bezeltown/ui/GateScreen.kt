@@ -3,9 +3,9 @@ package com.mikeyd.bezeltown.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -146,41 +146,43 @@ fun GateScreen(state: GameState, viewModel: GameViewModel, onLeft: () -> Unit, o
 
         TopCurvedText("\$${BigNumber.format(money)}", Gold)
 
+        // The speech bubble hugs the top and the status sits down by the Shop button,
+        // leaving the middle of the screen to the gatekeeper and his portal.
         Column(
-            modifier = Modifier.fillMaxSize().padding(top = 30.dp, bottom = 30.dp, start = 22.dp, end = 22.dp),
+            modifier = Modifier.fillMaxSize().padding(top = 26.dp, bottom = 30.dp, start = 30.dp, end = 30.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
                 text = pitch(unlocked, total, money, price, paid, paidAll, state.settingLoop, bonus),
-                fontSize = 11.sp,
+                fontSize = 10.sp,
+                lineHeight = 12.sp,
                 textAlign = TextAlign.Center,
                 color = Ink,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color.White.copy(alpha = 0.92f), RoundedCornerShape(10.dp))
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                    .background(Color.White.copy(alpha = 0.72f), RoundedCornerShape(10.dp))
+                    .padding(horizontal = 6.dp, vertical = 3.dp),
             )
+            Spacer(Modifier.weight(1f))
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
-                    .background(Ink.copy(alpha = 0.7f), RoundedCornerShape(10.dp))
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                    .background(Ink.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
             ) {
                 when {
                     !ready -> {
-                        Text("Buildings $unlocked/$total", fontSize = 12.sp, color = if (unlocked == total) Good else Color.White)
                         Text(
-                            "\$${BigNumber.format(money)} / \$${BigNumber.format(price)}",
-                            fontSize = 12.sp,
-                            color = if (money >= price) Good else Color.White,
+                            "Buildings $unlocked/$total · \$${BigNumber.format(money)}/\$${BigNumber.format(price)}",
+                            fontSize = 10.sp,
+                            color = if (unlocked == total && money >= price) Good else Color.White,
                         )
                     }
-                    paidAll -> Text("Tap to step in", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Good)
+                    paidAll -> Text("Tap to step in", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Good)
                     else -> {
                         Text(
                             if (paid == 0.0) "Crank to pay" else "Paid \$${BigNumber.format(paid)}",
-                            fontSize = 12.sp,
+                            fontSize = 11.sp,
                             color = Color.White,
                         )
                         PaidBar(fraction = (paid / max(money, 1.0)).toFloat())
@@ -189,6 +191,7 @@ fun GateScreen(state: GameState, viewModel: GameViewModel, onLeft: () -> Unit, o
             }
             if (!stepping && !paidUp) {
                 CompactChip(
+                    modifier = Modifier.padding(top = 3.dp),
                     onClick = onShop,
                     label = { Text("Shop · ${state.tokens} tk", fontSize = 11.sp) },
                     colors = ChipDefaults.secondaryChipColors(),

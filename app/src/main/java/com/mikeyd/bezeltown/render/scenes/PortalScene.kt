@@ -89,7 +89,7 @@ class PortalScene(engine: Engine, paidBefore: Boolean) : FilamentScene(engine, s
 
         // He bobs on his heels, and waves you off as you step in.
         wave += ((if (stepIn > 0f) 1f else 0f) - wave) * (dt * 6f).coerceAtMost(1f)
-        place(gatekeeper, x = KEEPER_X, y = sin(time * 3f) * 0.02f, rotZDeg = sin(time * 14f) * 12f * wave, sx = 1.6f, sy = 1.6f, sz = 1.6f)
+        place(gatekeeper, x = KEEPER_X, y = sin(time * 3f) * 0.02f, rotZDeg = sin(time * 14f) * 12f * wave, sx = KEEPER_SCALE, sy = KEEPER_SCALE, sz = KEEPER_SCALE)
 
         for (c in coins) {
             if (c.age >= 1f) continue
@@ -105,7 +105,9 @@ class PortalScene(engine: Engine, paidBefore: Boolean) : FilamentScene(engine, s
 
     override fun configureCamera(camera: Camera) {
         val aspect = viewportWidth.toFloat() / viewportHeight.coerceAtLeast(1)
-        this.camera.apply(camera, V3(0f, 1.1f, 5.2f), V3(0f, 0.9f, 0f), fovYDeg = 40f, aspect = aspect)
+        // Pulled back and aimed above the action, so he and the portal sit in the middle
+        // band between the speech bubble at the top and the status at the bottom.
+        this.camera.apply(camera, V3(0f, 2.0f, 6.6f), V3(0f, 1.55f, 0f), fovYDeg = 44f, aspect = aspect)
     }
 
     private fun ground(): MeshBuilder {
@@ -117,11 +119,13 @@ class PortalScene(engine: Engine, paidBefore: Boolean) : FilamentScene(engine, s
     }
 
     companion object {
-        private const val PORTAL_X = 0.55f
-        private const val PORTAL_Y = 1.25f
-        private const val KEEPER_X = -1.05f
-        private const val HAND_X = -0.7f
-        private const val HAND_Y = 0.75f
+        private const val PORTAL_X = 0.7f
+        private const val PORTAL_Y = 1.15f
+        private const val KEEPER_X = -1.15f
+        private const val KEEPER_SCALE = 1.4f
+        // His flag hand, where the coins land.
+        private const val HAND_X = KEEPER_X + 0.22f * KEEPER_SCALE
+        private const val HAND_Y = 0.45f * KEEPER_SCALE
         private const val COIN_FLIGHT_SECONDS = 0.45f
         private val SWIRL_SHUT = srgb(0x3A2E5C)
         private val SWIRL_OPEN = srgb(0xC77DFF)
