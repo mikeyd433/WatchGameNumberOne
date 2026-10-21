@@ -19,6 +19,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import kotlinx.coroutines.delay
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -40,20 +44,33 @@ private const val OVERWORLD = "overworld"
 private const val BUILDING = "building/{id}"
 private const val UPGRADES = "upgrades/{id}"
 private const val GATE = "gate"
+private const val TITLE_MILLIS = 1500L
 private const val SHOP = "shop"
 
 @Composable
 fun BezelTownApp(viewModel: GameViewModel) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    // Engine startup and material loading take a moment; do it behind the loading screen.
-    LaunchedEffect(Unit) { FilamentRuntime.engine(context) }
+    // The title screen stays up at least this long, so the version can be read.
+    var titleShown by remember { mutableStateOf(false) }
+    // Engine startup and material loading take a moment; do it behind the title screen.
+    LaunchedEffect(Unit) {
+        FilamentRuntime.engine(context)
+        delay(TITLE_MILLIS)
+        titleShown = true
+    }
+    val version = remember {
+        runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull()
+    }
 
     MaterialTheme {
         val loaded = state
-        if (loaded == null) {
+        if (loaded == null || !titleShown) {
             Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
-                Text("Bezel Town")
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Bezel Town", fontSize = 20.sp, fontWeight = FontWeight.Black, color = Gold)
+                    if (version != null) Text("v$version", fontSize = 12.sp, color = Color.White.copy(alpha = 0.7f))
+                }
             }
             return@MaterialTheme
         }
