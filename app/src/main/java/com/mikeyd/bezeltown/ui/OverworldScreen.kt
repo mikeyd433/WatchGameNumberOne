@@ -92,21 +92,24 @@ fun OverworldScreen(
     val signs = (0 until OverworldScene.SLOT_COUNT).map { signFor(it, state, viewModel) }
     SideEffect { scene?.setBuildings(visuals) }
 
-    fun buildingAt(slot: Int): BuildingId? = setting.buildings.getOrNull(slot - 1)?.id
+    // The tap detector is set up once and keeps whichever handler it first saw, so
+    // the handler must read the game through these holders, never capture it.
+    val currentState by rememberUpdatedState(state)
+    val currentOnEnter by rememberUpdatedState(onEnter)
 
     fun onTap() {
         val slot = walker.doorSlot ?: return
+        val now = currentState
+        val here = viewModel.setting(now)
         when (slot) {
             ARCADE_SLOT -> message = "Arcade: coming soon"
-            GATE_SLOT -> message = "\"Portal opens at \$${BigNumber.format(setting.portalThreshold)}! What a deal!\""
+            GATE_SLOT -> message = "\"Portal opens at \$${BigNumber.format(here.portalThreshold)}! What a deal!\""
             else -> {
-                val id = buildingAt(slot) ?: return
-                val def = setting.building(id)
-                val building = state.building(id)
+                val def = here.buildings.getOrNull(slot - 1) ?: return
                 when {
-                    building.unlocked -> onEnter(id)
+                    now.building(def.id).unlocked -> currentOnEnter(def.id)
                     def.microgame == null -> message = "${def.name}: under construction"
-                    viewModel.unlock(id) -> {
+                    viewModel.unlock(def.id) -> {
                         haptics.heavy()
                         message = "${def.name} open!"
                     }
@@ -118,9 +121,6 @@ fun OverworldScreen(
             }
         }
     }
-
-    // The tap detector outlives recompositions; always call the latest onTap.
-    val latestOnTap by rememberUpdatedState(::onTap)
 
     LaunchedEffect(message) {
         if (message != null) {
@@ -139,7 +139,7 @@ fun OverworldScreen(
             }
             .focusRequester(focusRequester)
             .focusable()
-            .pointerInput(Unit) { detectTapGestures { latestOnTap() } },
+            .pointerInput(Unit) { detectTapGestures { onTap() } },
     ) {
         FilamentSurface(
             modifier = Modifier.fillMaxSize(),
