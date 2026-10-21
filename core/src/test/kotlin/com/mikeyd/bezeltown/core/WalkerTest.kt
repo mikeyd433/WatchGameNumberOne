@@ -63,6 +63,14 @@ class WalkerTest {
         }
     }
 
+    @Test fun teleportLandsAtADoor() {
+        val w = Walker(slotCount = 7, startSlot = 1)
+        w.onDetents(3)
+        w.teleport(6)
+        assertEquals(6, w.doorSlot)
+        assertEquals(6f, w.position, 0f)
+    }
+
     @Test fun noDoorWhileStillWalking() {
         val w = Walker(slotCount = 7, startSlot = 1)
         w.onDetents(6)

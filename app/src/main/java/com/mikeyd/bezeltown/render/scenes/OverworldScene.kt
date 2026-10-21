@@ -63,8 +63,8 @@ class OverworldScene(engine: Engine, private val walker: Walker) :
             buildingMaterials[1],
         )
 
-        addMesh(gatekeeper()).also { place(it, x = slotX(6) - 1.1f, z = -0.2f) }
-        portalRing = addMesh(portalRingMesh())
+        addMesh(gatekeeperModel()).also { place(it, x = slotX(6) - 1.1f, z = -0.2f) }
+        portalRing = addMesh(portalRingModel())
         portalSwirl = addMesh(MeshBuilder().disc(0f, 0f, 0f, 0.82f, 0.04f, 7, srgb(0x6B3FA0)))
 
         character = addGroup()
@@ -234,37 +234,6 @@ class OverworldScene(engine: Engine, private val walker: Walker) :
         b.box(0.07f, 2.2f, 0.55f, 0.16f, 0.04f, 0.02f, srgb(0x222222))
         b.cone(0f, 2.7f, 0f, 0.8f, 0.7f, 4, srgb(0x4E6E8E), 45f)
         b.block(0f, 0f, 0.75f, 0.5f, 0.9f, 0.05f, srgb(0x6B4B2E))
-        return b
-    }
-
-    /** The gatekeeper, this time as a cheesy town tour guide with a flag. */
-    private fun gatekeeper(): MeshBuilder {
-        val b = MeshBuilder()
-        b.block(-0.07f, 0f, 0f, 0.09f, 0.32f, 0.1f, srgb(0xC8B48A)) // legs
-        b.block(0.07f, 0f, 0f, 0.09f, 0.32f, 0.1f, srgb(0xC8B48A))
-        b.block(0f, 0.32f, 0f, 0.3f, 0.34f, 0.18f, srgb(0xF4D03F)) // shirt
-        b.block(0f, 0.66f, 0f, 0.2f, 0.2f, 0.2f, srgb(0xF1C27D)) // head
-        b.block(0f, 0.86f, 0f, 0.22f, 0.07f, 0.22f, srgb(0xD7263D)) // cap
-        b.box(0f, 0.875f, 0.15f, 0.2f, 0.03f, 0.12f, srgb(0xD7263D)) // brim
-        b.box(-0.05f, 0.76f, 0.105f, 0.03f, 0.03f, 0.01f, srgb(0x222222)) // eyes
-        b.box(0.05f, 0.76f, 0.105f, 0.03f, 0.03f, 0.01f, srgb(0x222222))
-        b.block(0.22f, 0.3f, 0.05f, 0.03f, 0.95f, 0.03f, srgb(0x6B4B2E)) // flag pole
-        b.box(0.37f, 1.12f, 0.05f, 0.28f, 0.18f, 0.02f, srgb(0x3A86FF)) // pennant
-        return b
-    }
-
-    private fun portalRingMesh(): MeshBuilder {
-        val b = MeshBuilder()
-        val segments = 14
-        for (k in 0 until segments) {
-            val a = (k.toFloat() / segments) * 360f
-            val rad = Math.toRadians(a.toDouble())
-            val cx = (0.95 * Math.cos(rad)).toFloat()
-            val cy = (0.95 * Math.sin(rad)).toFloat()
-            val color = if (k % 2 == 0) srgb(0x8E7CC3) else srgb(0xB4A7D6)
-            // Each segment is a short box tangent to the ring.
-            b.disc(cx, cy, 0f, 0.2f, 0.18f, 5, color, a)
-        }
         return b
     }
 

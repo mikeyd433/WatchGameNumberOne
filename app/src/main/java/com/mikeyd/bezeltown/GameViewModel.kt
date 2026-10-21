@@ -8,6 +8,8 @@ import com.mikeyd.bezeltown.core.content.SettingDef
 import com.mikeyd.bezeltown.core.content.Settings
 import com.mikeyd.bezeltown.core.economy.AwayReport
 import com.mikeyd.bezeltown.core.economy.Economy
+import com.mikeyd.bezeltown.core.economy.LeaveReport
+import com.mikeyd.bezeltown.core.economy.Portal
 import com.mikeyd.bezeltown.core.economy.PlayMode
 import com.mikeyd.bezeltown.core.economy.PlayOutcome
 import com.mikeyd.bezeltown.core.model.BuildingId
@@ -36,6 +38,11 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     /** What was earned while the game was closed, until the player dismisses it. */
     val away: StateFlow<AwayReport?> = _away.asStateFlow()
+
+    private val _arrival = MutableStateFlow<LeaveReport?>(null)
+
+    /** What the last trip through the portal earned, until the player dismisses it. */
+    val arrival: StateFlow<LeaveReport?> = _arrival.asStateFlow()
 
     val haptics = Haptics(app)
 
@@ -70,6 +77,25 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
                 save()
             }
         }
+    }
+
+    /**
+     * Pays everything to the gatekeeper and steps through the portal. Arrives at
+     * the far right of the fresh setting, by the portal. Returns false if the
+     * requirements aren't met.
+     */
+    fun leaveThroughPortal(): Boolean {
+        val current = _state.value ?: return false
+        val (next, report) = Portal.leave(current, setting(current)) ?: return false
+        _state.value = next
+        _arrival.value = report
+        walker.teleport(walker.slotCount - 1)
+        save()
+        return true
+    }
+
+    fun dismissArrival() {
+        _arrival.value = null
     }
 
     fun dismissAway() {

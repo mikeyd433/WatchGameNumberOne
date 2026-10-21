@@ -10,7 +10,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.roundToInt
 import com.mikeyd.bezeltown.core.economy.AwayReport
+import com.mikeyd.bezeltown.core.economy.LeaveReport
 import com.mikeyd.bezeltown.core.format.BigNumber
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -37,6 +39,7 @@ import com.mikeyd.bezeltown.render.FilamentRuntime
 private const val OVERWORLD = "overworld"
 private const val BUILDING = "building/{id}"
 private const val UPGRADES = "upgrades/{id}"
+private const val GATE = "gate"
 
 @Composable
 fun BezelTownApp(viewModel: GameViewModel) {
@@ -58,6 +61,7 @@ fun BezelTownApp(viewModel: GameViewModel) {
         // Shared so touch-driven microgames can limit swipe-to-dismiss to the screen edge.
         val swipeToDismissState = rememberSwipeToDismissBoxState()
         val away by viewModel.away.collectAsStateWithLifecycle()
+        val arrival by viewModel.arrival.collectAsStateWithLifecycle()
         Box(Modifier.fillMaxSize()) {
             SwipeDismissableNavHost(
                 navController = navController,
@@ -72,6 +76,7 @@ fun BezelTownApp(viewModel: GameViewModel) {
                         state = live,
                         viewModel = viewModel,
                         onEnter = { id -> navController.navigate("building/${id.name}") },
+                        onGate = { navController.navigate(GATE) },
                     )
                 }
                 composable(BUILDING) { entry ->
@@ -85,6 +90,10 @@ fun BezelTownApp(viewModel: GameViewModel) {
                         onUpgrades = { navController.navigate("upgrades/${id.name}") },
                     )
                 }
+                composable(GATE) {
+                    val live = viewModel.liveState() ?: return@composable
+                    GateScreen(state = live, viewModel = viewModel, onLeft = { navController.popBackStack() })
+                }
                 composable(UPGRADES) { entry ->
                     val id = BuildingId.valueOf(entry.arguments?.getString("id") ?: return@composable)
                     val live = viewModel.liveState() ?: return@composable
@@ -92,9 +101,44 @@ fun BezelTownApp(viewModel: GameViewModel) {
                 }
             }
             away?.let { AwayCard(it, onDismiss = viewModel::dismissAway) }
+            arrival?.let { report ->
+                ArrivalCard(report, totalBonus = loaded.totalBonus, tokens = loaded.tokens, onDismiss = viewModel::dismissArrival)
+            }
         }
     }
 }
+
+/** After the portal: what the trip earned, and the running totals. */
+@Composable
+private fun ArrivalCard(report: LeaveReport, totalBonus: Double, tokens: Long, onDismiss: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF241B3D).copy(alpha = 0.9f))
+            .pointerInput(Unit) { detectTapGestures { onDismiss() } },
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+            modifier = Modifier.padding(horizontal = 28.dp),
+        ) {
+            Text("Welcome back to", fontSize = 12.sp, color = Color.White.copy(alpha = 0.8f))
+            Text("Small Town ${report.arrivingLoop + 1}", fontSize = 18.sp, fontWeight = FontWeight.Black, color = Color(0xFFD9CCFF))
+            Text("+${percent(report.bonus)} bonus  ·  +${report.tokens} tokens", fontSize = 13.sp, color = Gold)
+            Text(
+                "Earning +${percent(totalBonus)} on everything. ${tokens} tokens to spend.",
+                fontSize = 11.sp,
+                textAlign = TextAlign.Center,
+                color = Color.White.copy(alpha = 0.85f),
+            )
+            Text("Tap to continue", fontSize = 10.sp, color = Color.White.copy(alpha = 0.6f))
+        }
+    }
+}
+
+/** 0.054 -> "5.4%". */
+private fun percent(fraction: Double): String = "${(fraction * 1000).roundToInt() / 10.0}%"
 
 /** "While you were away": what the buildings earned while the game was closed. */
 @Composable

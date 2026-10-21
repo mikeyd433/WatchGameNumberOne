@@ -51,6 +51,14 @@ class Walker(
             null
         }
 
+    /** Jumps straight to a slot, e.g. arriving through the portal. */
+    fun teleport(slot: Int) {
+        targetStep = slot.coerceIn(0, slotCount - 1) * stepsPerSlot
+        position = targetPosition
+        velocity = 0f
+        idleSeconds = 0f
+    }
+
     fun onDetents(detents: Int): List<Event> {
         if (detents == 0) return emptyList()
         idleSeconds = 0f

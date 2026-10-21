@@ -64,6 +64,7 @@ fun OverworldScreen(
     state: GameState,
     viewModel: GameViewModel,
     onEnter: (BuildingId) -> Unit,
+    onGate: () -> Unit,
 ) {
     val context = LocalContext.current
     val setting = viewModel.setting(state)
@@ -97,6 +98,7 @@ fun OverworldScreen(
     // the handler must read the game through these holders, never capture it.
     val currentState by rememberUpdatedState(state)
     val currentOnEnter by rememberUpdatedState(onEnter)
+    val currentOnGate by rememberUpdatedState(onGate)
 
     fun onTap() {
         val slot = walker.doorSlot ?: return
@@ -104,7 +106,7 @@ fun OverworldScreen(
         val here = viewModel.setting(now)
         when (slot) {
             ARCADE_SLOT -> message = "Arcade: coming soon"
-            GATE_SLOT -> message = "\"Portal opens at \$${BigNumber.format(Portal.threshold(now, here))}! What a deal!\""
+            GATE_SLOT -> currentOnGate()
             else -> {
                 val def = here.buildings.getOrNull(slot - 1) ?: return
                 when {
@@ -283,6 +285,7 @@ private const val SIGN_AFFORD = 0x7CFFB2
 private const val SIGN_SOON = 0x9AA8B8
 
 private fun hintFor(slot: Int, state: GameState, viewModel: GameViewModel): String? {
+    if (slot == GATE_SLOT) return "Tap to talk to the gatekeeper"
     if (slot !in 1..5) return null
     val def = viewModel.setting(state).buildings[slot - 1]
     val building = state.building(def.id)
