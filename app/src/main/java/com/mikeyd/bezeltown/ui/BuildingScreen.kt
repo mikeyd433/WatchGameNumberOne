@@ -294,7 +294,17 @@ private fun PlayingOverlay(g: Microgame, frame: () -> Int) {
         else -> "${(g.progress * 100).roundToInt()}%"
     }
     BottomCurvedText(status)
-    if (g is RadioGame) RadioOverlay(g)
+    if (g is RadioGame) {
+        // Pass plain values, not the game object: the object stays the same while its
+        // contents change, so Compose would skip redrawing and freeze the overlay.
+        RadioOverlay(
+            target = g.targetStep,
+            dial = g.dialStep,
+            tuned = g.tuned,
+            signal = g.signal,
+            elapsed = g.elapsed,
+        )
+    }
     if (g is PumpGame) {
         // Upper left, over the sky and the pump's pipe, so the tank stays in view.
         Column(
@@ -314,12 +324,12 @@ private fun PlayingOverlay(g: Microgame, frame: () -> Int) {
  * signal comes in, and music notes once it's clear.
  */
 @Composable
-private fun RadioOverlay(g: RadioGame) {
-    val static = 1f - g.signal
+private fun RadioOverlay(target: Int, dial: Int, tuned: Boolean, signal: Float, elapsed: Float) {
+    val static = 1f - signal
     if (static > 0f) {
         Canvas(Modifier.fillMaxSize()) {
             // Fresh snow about 30 times a second.
-            val rng = java.util.Random((g.elapsed * 30f).toLong())
+            val rng = java.util.Random((elapsed * 30f).toLong())
             val block = 9.dp.toPx()
             val cols = (size.width / block).toInt() + 1
             val rows = (size.height / block).toInt() + 1
@@ -335,16 +345,16 @@ private fun RadioOverlay(g: RadioGame) {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text("TUNE TO", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = 0.8f))
-        Text("${RadioGame.label(g.targetStep)} FM", fontSize = 22.sp, fontWeight = FontWeight.Black, color = Gold)
-        if (g.signal > 0.7f) {
-            Text(if ((g.elapsed * 3f).toInt() % 2 == 0) "♪  ♫" else "♫  ♪", fontSize = 16.sp, color = Good)
+        Text("${RadioGame.label(target)} FM", fontSize = 22.sp, fontWeight = FontWeight.Black, color = Gold)
+        if (signal > 0.7f) {
+            Text(if ((elapsed * 3f).toInt() % 2 == 0) "♪  ♫" else "♫  ♪", fontSize = 16.sp, color = Good)
         }
         Spacer(Modifier.weight(1f))
         Text(
-            RadioGame.label(g.dialStep),
+            RadioGame.label(dial),
             fontSize = 15.sp,
             fontWeight = FontWeight.Bold,
-            color = if (g.tuned) Good else Color.White,
+            color = if (tuned) Good else Color.White,
             modifier = Modifier
                 .background(Ink.copy(alpha = 0.75f), RoundedCornerShape(6.dp))
                 .padding(horizontal = 8.dp, vertical = 1.dp),

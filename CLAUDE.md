@@ -31,3 +31,8 @@ Wear OS incremental game. See README.md for layout and docs/SPEC.md for the desi
 - The Play Store build is `./gradlew :app:bundlePlay`, signed with a private upload
   key the owner holds (env `BEZEL_UPLOAD_KEYSTORE` / `BEZEL_UPLOAD_PASSWORD`; CI
   reads it from repo secrets). Never commit an upload key or its password.
+- Compose skips work aggressively here (strong skipping). Two rules, each learned
+  from a bug: pass composables plain values, not a game object whose contents
+  change in place (it gets skipped and freezes); and give long-lived callbacks
+  such as gesture detectors live state through `rememberUpdatedState` holders,
+  not function references that capture it (they get cached and go stale).
