@@ -10,7 +10,7 @@ import kotlin.random.Random
  * number, the static clearing, and the feel of the detents. Hold on the station
  * to lock it in.
  */
-class RadioGame(private val random: Random = Random.Default) : Microgame(MicrogameId.RADIO, durationSeconds = 12f) {
+class RadioGame(private val random: Random = Random.Default) : Microgame(MicrogameId.RADIO, durationSeconds = 15f) {
     /** Where the dial is, in steps from the bottom of the band. */
     var dialStep = START_LOW + random.nextInt(START_HIGH - START_LOW + 1)
         private set
@@ -64,7 +64,7 @@ class RadioGame(private val random: Random = Random.Default) : Microgame(Microga
         const val STEPS = 41
         const val STATIONS = 3
         const val HOLD_SECONDS = 0.5f
-        const val PAR_SECONDS = 6f
+        const val PAR_SECONDS = 10f
         /** How many steps away the signal starts coming through the static. */
         const val STATIC_RANGE = 6f
         const val MIN_TURN = 6

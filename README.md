@@ -25,7 +25,7 @@ Small Town (§6):
 - **Radio Station** (bezel precision): tune to the station being called out,
   by the number, the clearing static and the feel of the detents (buzzy in the
   static, a clean click on the station); hold to lock it in. Three stations in
-  12 seconds; par 6 s.
+  15 seconds; par 10 s.
 - **Clock Tower** (both, the finale): crank the bezel to wind the mainspring and
   stop to lock it in (crank too far past full and it goes sproing), then drag
   the hands to the time shown; the bell rings when both are right. 12 seconds;
