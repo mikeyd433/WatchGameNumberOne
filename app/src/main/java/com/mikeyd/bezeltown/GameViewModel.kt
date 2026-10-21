@@ -82,15 +82,15 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * Pays everything to the gatekeeper and steps through the portal. Arrives at
-     * the far right of the fresh setting, by the portal. Returns false if the
-     * requirements aren't met.
+     * the far left of the fresh setting, so every run goes left to right.
+     * Returns false if the requirements aren't met.
      */
     fun leaveThroughPortal(): Boolean {
         val current = _state.value ?: return false
         val (next, report) = Portal.leave(current, setting(current)) ?: return false
         _state.value = next
         _arrival.value = report
-        walker.teleport(walker.slotCount - 1)
+        walker.teleport(0)
         save()
         return true
     }

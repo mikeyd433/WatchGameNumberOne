@@ -37,7 +37,8 @@ Small Town (§6):
 - **Gatekeeper and portal** (§7–§10): with all five buildings open and $500K,
   crank the bezel to feed him every coin, then step through. Saving past the
   price earns a permanent production bonus (5 × √(overflow ÷ price) %) and
-  tokens (3 × √(overflow ÷ price)). Money, credits and buildings reset. Until
+  tokens (3 × √(overflow ÷ price)). Money, credits and buildings reset, and you
+  start again at the far left. Until
   the Carnival exists the portal loops back to Small Town at 10× the price.
 - **Gatekeeper's stall**: spend tokens on Bonus Rate, Head Start, Cheaper Gate
   and Offline Storage. Rules live in `core/.../economy/Portal.kt`.
