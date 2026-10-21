@@ -34,10 +34,15 @@ Small Town (§6):
   building's credits.
 - **Offline earnings** (§13): buildings earn while the game is closed, up to
   their Storage, with a "While you were away" card on return.
-- The gatekeeper by the portal is shown but not playable yet.
+- **Gatekeeper and portal** (§7–§10): with all five buildings open and $500K,
+  crank the bezel to feed him every coin, then step through. Saving past the
+  price earns a permanent production bonus (5 × √(overflow ÷ price) %) and
+  tokens (3 × √(overflow ÷ price)). Money, credits and buildings reset. Until
+  the Carnival exists the portal loops back to Small Town at 10× the price.
+- **Gatekeeper's stall**: spend tokens on Bonus Rate, Head Start, Cheaper Gate
+  and Offline Storage. Rules live in `core/.../economy/Portal.kt`.
 
-Not yet: the gatekeeper's crank payment, portal,
-overflow bonus, tokens, global upgrades, the arcade cabinet, particles.
+Not yet: the Carnival, the arcade cabinet, particles, a fancier stall.
 
 ## Layout
 

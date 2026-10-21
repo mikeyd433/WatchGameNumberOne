@@ -14,6 +14,7 @@ import com.mikeyd.bezeltown.core.economy.PlayMode
 import com.mikeyd.bezeltown.core.economy.PlayOutcome
 import com.mikeyd.bezeltown.core.model.BuildingId
 import com.mikeyd.bezeltown.core.model.GameState
+import com.mikeyd.bezeltown.core.model.GlobalUpgrade
 import com.mikeyd.bezeltown.core.model.UpgradeTrack
 import com.mikeyd.bezeltown.core.overworld.Walker
 import com.mikeyd.bezeltown.data.SaveRepository
@@ -93,6 +94,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         save()
         return true
     }
+
+    fun buyGlobalUpgrade(upgrade: GlobalUpgrade): Boolean = change { Portal.buy(it, upgrade) }
 
     fun dismissArrival() {
         _arrival.value = null

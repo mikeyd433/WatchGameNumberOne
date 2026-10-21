@@ -35,6 +35,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.wear.compose.foundation.ExperimentalWearFoundationApi
 import androidx.wear.compose.foundation.rememberActiveFocusRequester
+import androidx.wear.compose.material.ChipDefaults
+import androidx.wear.compose.material.CompactChip
 import androidx.wear.compose.material.Text
 import com.mikeyd.bezeltown.GameViewModel
 import com.mikeyd.bezeltown.core.economy.Portal
@@ -55,7 +57,7 @@ import kotlin.math.sqrt
  */
 @OptIn(ExperimentalWearFoundationApi::class)
 @Composable
-fun GateScreen(state: GameState, viewModel: GameViewModel, onLeft: () -> Unit) {
+fun GateScreen(state: GameState, viewModel: GameViewModel, onLeft: () -> Unit, onShop: () -> Unit) {
     val context = LocalContext.current
     val setting = viewModel.setting(state)
     val haptics = viewModel.haptics
@@ -184,6 +186,13 @@ fun GateScreen(state: GameState, viewModel: GameViewModel, onLeft: () -> Unit) {
                         PaidBar(fraction = (paid / max(money, 1.0)).toFloat())
                     }
                 }
+            }
+            if (!stepping && !paidUp) {
+                CompactChip(
+                    onClick = onShop,
+                    label = { Text("Shop · ${state.tokens} tk", fontSize = 11.sp) },
+                    colors = ChipDefaults.secondaryChipColors(),
+                )
             }
         }
 

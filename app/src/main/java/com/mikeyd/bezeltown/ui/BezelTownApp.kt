@@ -40,6 +40,7 @@ private const val OVERWORLD = "overworld"
 private const val BUILDING = "building/{id}"
 private const val UPGRADES = "upgrades/{id}"
 private const val GATE = "gate"
+private const val SHOP = "shop"
 
 @Composable
 fun BezelTownApp(viewModel: GameViewModel) {
@@ -92,7 +93,16 @@ fun BezelTownApp(viewModel: GameViewModel) {
                 }
                 composable(GATE) {
                     val live = viewModel.liveState() ?: return@composable
-                    GateScreen(state = live, viewModel = viewModel, onLeft = { navController.popBackStack() })
+                    GateScreen(
+                        state = live,
+                        viewModel = viewModel,
+                        onLeft = { navController.popBackStack() },
+                        onShop = { navController.navigate(SHOP) },
+                    )
+                }
+                composable(SHOP) {
+                    val live = viewModel.liveState() ?: return@composable
+                    ShopScreen(state = live, viewModel = viewModel)
                 }
                 composable(UPGRADES) { entry ->
                     val id = BuildingId.valueOf(entry.arguments?.getString("id") ?: return@composable)
