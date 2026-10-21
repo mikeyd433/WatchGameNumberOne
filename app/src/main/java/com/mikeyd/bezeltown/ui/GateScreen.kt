@@ -146,8 +146,8 @@ fun GateScreen(state: GameState, viewModel: GameViewModel, onLeft: () -> Unit, o
 
         TopCurvedText("\$${BigNumber.format(money)}", Gold)
 
-        // The speech bubble hugs the top and the status sits down by the Shop button,
-        // leaving the middle of the screen to the gatekeeper and his portal.
+        // The speech bubble and status sit together up in the sky and the Shop button at
+        // the bottom, leaving the middle of the screen to the gatekeeper and his portal.
         Column(
             modifier = Modifier.fillMaxSize().padding(top = 26.dp, bottom = 30.dp, start = 30.dp, end = 30.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -163,10 +163,10 @@ fun GateScreen(state: GameState, viewModel: GameViewModel, onLeft: () -> Unit, o
                     .background(Color.White.copy(alpha = 0.72f), RoundedCornerShape(10.dp))
                     .padding(horizontal = 6.dp, vertical = 3.dp),
             )
-            Spacer(Modifier.weight(1f))
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
+                    .padding(top = 3.dp)
                     .background(Ink.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
                     .padding(horizontal = 6.dp, vertical = 2.dp),
             ) {
@@ -189,6 +189,7 @@ fun GateScreen(state: GameState, viewModel: GameViewModel, onLeft: () -> Unit, o
                     }
                 }
             }
+            Spacer(Modifier.weight(1f))
             if (!stepping && !paidUp) {
                 CompactChip(
                     modifier = Modifier.padding(top = 3.dp),
