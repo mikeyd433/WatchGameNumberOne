@@ -22,14 +22,18 @@ Small Town (§6):
   A pressure gauge shows when you're cranking too fast and spraying.
 - **Barber Shop** (bezel precision): dial the swivel chair to the gold mark on
   the floor and hold still to snip. Four snips in 9 seconds; par 5 s.
+- **Radio Station** (bezel precision): tune to the station being called out,
+  by the number, the clearing static and the feel of the detents (buzzy in the
+  static, a clean click on the station); hold to lock it in. Three stations in
+  10 seconds; par 6 s.
 - **Upgrades**: Skill, Automation and Storage per building, paid in that
   building's credits.
 - **Offline earnings** (§13): buildings earn while the game is closed, up to
   their Storage, with a "While you were away" card on return.
-- Locked Radio Station and Clock Tower, and the gatekeeper by the portal, are
-  shown but not playable yet.
+- The locked Clock Tower and the gatekeeper by the portal are shown but not
+  playable yet.
 
-Not yet: Radio Station, Clock Tower, the gatekeeper's crank payment, portal,
+Not yet: Clock Tower, the gatekeeper's crank payment, portal,
 overflow bonus, tokens, global upgrades, the arcade cabinet, particles.
 
 ## Layout

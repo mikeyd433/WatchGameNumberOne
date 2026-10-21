@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
 enum class BuildingId { BAKERY, WATER_TOWER, BARBER_SHOP, RADIO_STATION, CLOCK_TOWER }
 
 @Serializable
-enum class MicrogameId { KNEAD, PUMP, BARBER }
+enum class MicrogameId { KNEAD, PUMP, BARBER, RADIO }
 
 @Serializable
 enum class UpgradeTrack { SKILL, AUTOMATION, STORAGE }

@@ -23,6 +23,16 @@ class Haptics(context: Context) {
 
     fun heavy() = predefined(VibrationEffect.EFFECT_HEAVY_CLICK)
 
+    /** A rough, buzzy detent: the feel of turning through static. */
+    fun buzz() {
+        val v = vibrator ?: return
+        if (!v.hasVibrator()) return
+        v.vibrate(
+            if (v.hasAmplitudeControl()) VibrationEffect.createOneShot(28, 70)
+            else VibrationEffect.createOneShot(18, VibrationEffect.DEFAULT_AMPLITUDE),
+        )
+    }
+
     fun success() = waveform(longArrayOf(0, 40, 60, 40, 60, 90), intArrayOf(0, 180, 0, 180, 0, 255))
 
     fun failure() = waveform(longArrayOf(0, 160), intArrayOf(0, 120))

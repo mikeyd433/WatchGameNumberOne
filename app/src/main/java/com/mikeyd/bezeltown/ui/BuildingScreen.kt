@@ -49,6 +49,7 @@ import com.mikeyd.bezeltown.core.microgame.BarberGame
 import com.mikeyd.bezeltown.core.microgame.KneadGame
 import com.mikeyd.bezeltown.core.microgame.Microgame
 import com.mikeyd.bezeltown.core.microgame.PumpGame
+import com.mikeyd.bezeltown.core.microgame.RadioGame
 import com.mikeyd.bezeltown.core.model.BuildingId
 import com.mikeyd.bezeltown.core.model.GameState
 import com.mikeyd.bezeltown.core.model.MicrogameId
@@ -56,6 +57,7 @@ import com.mikeyd.bezeltown.input.BezelDetents
 import com.mikeyd.bezeltown.render.FilamentSurface
 import com.mikeyd.bezeltown.render.scenes.BakeryScene
 import com.mikeyd.bezeltown.render.scenes.BarberScene
+import com.mikeyd.bezeltown.render.scenes.RadioScene
 import com.mikeyd.bezeltown.render.scenes.MicrogameScene
 import com.mikeyd.bezeltown.render.scenes.WaterTowerScene
 import kotlin.math.roundToInt
@@ -75,6 +77,7 @@ private data class GameCopy(val verb: String, val hint: String, val win: String,
 private fun copyFor(game: MicrogameId) = when (game) {
     MicrogameId.KNEAD -> GameCopy("KNEAD!", "Swipe the way the arrows point", "SPRINGY!", "Still lumpy…")
     MicrogameId.PUMP -> GameCopy("PUMP!", "Crank the bezel. Not too fast!", "FULL!", "Bone dry…")
+    MicrogameId.RADIO -> GameCopy("TUNE IN!", "Dial to the station and hold", "ON AIR!", "Dead air…")
     MicrogameId.BARBER -> GameCopy("SNIP!", "Turn the chair to the gold mark and hold", "FRESH CUT!", "Botched it…")
 }
 
@@ -82,6 +85,7 @@ private fun newGame(game: MicrogameId): Microgame = when (game) {
     MicrogameId.KNEAD -> KneadGame()
     MicrogameId.PUMP -> PumpGame()
     MicrogameId.BARBER -> BarberGame()
+    MicrogameId.RADIO -> RadioGame()
 }
 
 /**
@@ -146,6 +150,10 @@ fun BuildingScreen(
                     lastCleared = g.cleared
                     lastMistakes = g.mistakes
                 }
+                if (g is RadioGame) {
+                    if (g.stations > lastCleared) haptics.heavy()
+                    lastCleared = g.stations
+                }
                 if (g is BarberGame) {
                     // A click when the chair lands on the mark; a heavy snip when the hold completes.
                     if (g.snips > lastCleared) haptics.heavy()
@@ -187,7 +195,16 @@ fun BuildingScreen(
                 val g = game
                 if (playing && g != null && n != 0) {
                     g.onDetents(n)
-                    haptics.tick()
+                    if (g is RadioGame) {
+                        // Rough and buzzy in the static, a light tick when close, a clean click on the station.
+                        when {
+                            g.tuned -> haptics.click()
+                            g.distance <= 2 -> haptics.tick()
+                            else -> haptics.buzz()
+                        }
+                    } else {
+                        haptics.tick()
+                    }
                 }
                 true
             }
@@ -216,6 +233,7 @@ fun BuildingScreen(
                     MicrogameId.KNEAD -> BakeryScene(engine)
                     MicrogameId.PUMP -> WaterTowerScene(engine)
                     MicrogameId.BARBER -> BarberScene(engine)
+                    MicrogameId.RADIO -> RadioScene(engine)
                 }
                 created.frameListener = { dt -> latestOnFrame(dt) }
                 scene = created
@@ -272,9 +290,11 @@ private fun PlayingOverlay(g: Microgame, frame: () -> Int) {
     val status = when (g) {
         is KneadGame -> "${g.cleared}/${KneadGame.TARGET_ARROWS}"
         is BarberGame -> "${g.snips}/${BarberGame.SNIPS} snips"
+        is RadioGame -> "${g.stations}/${RadioGame.STATIONS} stations"
         else -> "${(g.progress * 100).roundToInt()}%"
     }
     BottomCurvedText(status)
+    if (g is RadioGame) RadioOverlay(g)
     if (g is PumpGame) {
         // Upper left, over the sky and the pump's pipe, so the tank stays in view.
         Column(
@@ -286,6 +306,49 @@ private fun PlayingOverlay(g: Microgame, frame: () -> Int) {
                 Text("TOO FAST!", fontSize = 13.sp, fontWeight = FontWeight.Black, color = Warn)
             }
         }
+    }
+}
+
+/**
+ * Radio: the station to find, the dial's reading, static that thins out as the
+ * signal comes in, and music notes once it's clear.
+ */
+@Composable
+private fun RadioOverlay(g: RadioGame) {
+    val static = 1f - g.signal
+    if (static > 0f) {
+        Canvas(Modifier.fillMaxSize()) {
+            // Fresh snow about 30 times a second.
+            val rng = java.util.Random((g.elapsed * 30f).toLong())
+            val block = 9.dp.toPx()
+            val cols = (size.width / block).toInt() + 1
+            val rows = (size.height / block).toInt() + 1
+            for (y in 0 until rows) for (x in 0 until cols) {
+                if (rng.nextFloat() > static * 0.6f) continue
+                val v = 0.35f + rng.nextFloat() * 0.65f
+                drawRect(Color(v, v, v, 0.55f), Offset(x * block, y * block), Size(block, block))
+            }
+        }
+    }
+    Column(
+        modifier = Modifier.fillMaxSize().padding(top = 26.dp, bottom = 34.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text("TUNE TO", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = 0.8f))
+        Text("${RadioGame.label(g.targetStep)} FM", fontSize = 22.sp, fontWeight = FontWeight.Black, color = Gold)
+        if (g.signal > 0.7f) {
+            Text(if ((g.elapsed * 3f).toInt() % 2 == 0) "♪  ♫" else "♫  ♪", fontSize = 16.sp, color = Good)
+        }
+        Spacer(Modifier.weight(1f))
+        Text(
+            RadioGame.label(g.dialStep),
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (g.tuned) Good else Color.White,
+            modifier = Modifier
+                .background(Ink.copy(alpha = 0.75f), RoundedCornerShape(6.dp))
+                .padding(horizontal = 8.dp, vertical = 1.dp),
+        )
     }
 }
 

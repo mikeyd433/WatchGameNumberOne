@@ -3,6 +3,7 @@ package com.mikeyd.bezeltown.core
 import com.mikeyd.bezeltown.core.microgame.BarberGame
 import com.mikeyd.bezeltown.core.microgame.KneadGame
 import com.mikeyd.bezeltown.core.microgame.PumpGame
+import com.mikeyd.bezeltown.core.microgame.RadioGame
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -195,5 +196,58 @@ class MicrogameTest {
         assertEquals(BarberGame.STEPS - 1, g.chairStep)
         g.onDetents(BarberGame.STEPS + 2)
         assertEquals(1, g.chairStep)
+    }
+
+    private fun tune(g: RadioGame) {
+        while (!g.tuned) g.onDetents(if (g.targetStep > g.dialStep) 1 else -1)
+    }
+
+    @Test fun radioLocksAStationAfterHolding() {
+        val g = RadioGame(Random(2))
+        assertFalse(g.tuned)
+        tune(g)
+        assertEquals(1f, g.signal, 0f)
+        g.update(0.3f)
+        assertEquals(0, g.stations)
+        g.update(0.3f)
+        assertEquals(1, g.stations)
+        assertFalse(g.tuned) // next station called out
+    }
+
+    @Test fun signalFadesWithDistance() {
+        val g = RadioGame(Random(2))
+        tune(g)
+        g.onDetents(3)
+        assertEquals(0.5f, g.signal, 1e-6f)
+        g.onDetents(10)
+        assertEquals(0f, g.signal, 0f)
+    }
+
+    @Test fun dialStopsAtTheEndsOfTheBand() {
+        val g = RadioGame(Random(3))
+        g.onDetents(-100)
+        assertEquals(0, g.dialStep)
+        g.onDetents(100)
+        assertEquals(RadioGame.STEPS - 1, g.dialStep)
+    }
+
+    @Test fun stationsAreAlwaysAProperTurnAwayAndInBand() {
+        for (seed in 0 until 50) {
+            val g = RadioGame(Random(seed))
+            repeat(RadioGame.STATIONS) {
+                if (g.finished) return@repeat
+                assertTrue(g.targetStep in 0 until RadioGame.STEPS)
+                assertTrue(g.distance in RadioGame.MIN_TURN..RadioGame.MAX_TURN)
+                tune(g)
+                g.update(0.6f)
+            }
+            assertTrue(g.succeeded)
+        }
+    }
+
+    @Test fun radioLabels() {
+        assertEquals("88.0", RadioGame.label(0))
+        assertEquals("94.5", RadioGame.label(13))
+        assertEquals("108.0", RadioGame.label(RadioGame.STEPS - 1))
     }
 }
