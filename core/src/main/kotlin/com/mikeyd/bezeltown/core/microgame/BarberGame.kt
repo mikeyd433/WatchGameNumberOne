@@ -8,7 +8,7 @@ import kotlin.random.Random
  * gold mark on the floor, then hold still for a moment to snip. Each snip moves
  * the mark somewhere new. Precision play: one detent is one step of the chair.
  */
-class BarberGame(private val random: Random = Random.Default) : Microgame(MicrogameId.BARBER, durationSeconds = 9f) {
+class BarberGame(private val random: Random = Random.Default) : Microgame(MicrogameId.BARBER, durationSeconds = 10f) {
     /** Which way the chair faces, in steps of [DEGREES_PER_STEP] (0 = facing you). */
     var chairStep = 0
         private set

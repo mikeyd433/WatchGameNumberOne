@@ -53,10 +53,15 @@ class BarberScene(engine: Engine) : MicrogameScene(engine, srgb(0x2F4A48), Fog(n
             }
         }
 
+        // A tile on the floor plus a pole with a diamond above head height, so the
+        // mark stays visible even when it's straight behind the customer.
         mark = addMesh(
             MeshBuilder()
                 .box(0f, 0.04f, 0f, 0.26f, 0.08f, 0.26f, srgb(0xFFFFFF))
-                .cone(0f, 0.08f, 0f, 0.16f, 0.22f, 4, srgb(0xFFFFFF), 45f),
+                .cone(0f, 0.08f, 0f, 0.16f, 0.22f, 4, srgb(0xFFFFFF), 45f)
+                .box(0f, BEACON_HEIGHT / 2f, 0f, 0.035f, BEACON_HEIGHT, 0.035f, srgb(0xFFFFFF))
+                .cone(0f, BEACON_HEIGHT, 0f, 0.17f, 0.22f, 4, srgb(0xFFFFFF), 45f)
+                .cone(0f, BEACON_HEIGHT, 0f, 0.17f, -0.22f, 4, srgb(0xFFFFFF), 45f),
             markMaterial,
         )
     }
@@ -141,7 +146,7 @@ class BarberScene(engine: Engine) : MicrogameScene(engine, srgb(0x2F4A48), Fog(n
 
     override fun configureCamera(camera: Camera) {
         val aspect = viewportWidth.toFloat() / viewportHeight.coerceAtLeast(1)
-        this.camera.apply(camera, V3(0f, 3.1f, 3.9f), V3(0f, 0.55f, 0f), fovYDeg = 40f, aspect = aspect)
+        this.camera.apply(camera, V3(0f, 3.6f, 3.6f), V3(0f, 0.75f, 0f), fovYDeg = 44f, aspect = aspect)
     }
 
     private fun room(): MeshBuilder {
@@ -208,7 +213,9 @@ class BarberScene(engine: Engine) : MicrogameScene(engine, srgb(0x2F4A48), Fog(n
         private val HAIR = srgb(0x6B3E1F)
         private val MARK_GOLD = srgb(0xFFD45C)
         private val MARK_GREEN = srgb(0x7CFFB2)
-        private const val RING_RADIUS = 1.15f
+        private const val RING_RADIUS = 1.3f
+        /** Height of the floating diamond over the mark: above the customer's head. */
+        private const val BEACON_HEIGHT = 1.85f
 
         /** Wild hair: one clump per snip, around the customer's head (chair space). */
         private val CLUMP_SPOTS = listOf(

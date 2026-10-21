@@ -21,7 +21,7 @@ Small Town (§6):
 - **Water Tower** (bezel spin): crank the pump to fill the tank in 8 seconds.
   A pressure gauge shows when you're cranking too fast and spraying.
 - **Barber Shop** (bezel precision): dial the swivel chair to the gold mark on
-  the floor and hold still to snip. Four snips in 9 seconds; par 5 s.
+  the floor and hold still to snip. Four snips in 10 seconds; par 5 s.
 - **Radio Station** (bezel precision): tune to the station being called out,
   by the number, the clearing static and the feel of the detents (buzzy in the
   static, a clean click on the station); hold to lock it in. Three stations in
