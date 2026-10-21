@@ -19,13 +19,24 @@ import com.mikeyd.bezeltown.core.format.BigNumber
 import com.mikeyd.bezeltown.core.model.GameState
 import com.mikeyd.bezeltown.core.model.GlobalUpgrade
 
-/** The gatekeeper's stall: permanent upgrades, paid in tokens. The bezel scrolls the list. */
+/**
+ * The token stall at the start of the street, run by the gatekeeper's "cousin":
+ * permanent upgrades, paid in tokens. The bezel scrolls the list.
+ */
 @Composable
 fun ShopScreen(state: GameState, viewModel: GameViewModel) {
     val listState = rememberScalingLazyListState()
     ScalingLazyColumn(modifier = Modifier.fillMaxSize(), state = listState) {
         item {
-            Text("Gatekeeper's Stall", fontWeight = FontWeight.Bold, fontSize = 15.sp, textAlign = TextAlign.Center)
+            Text("The Stall", fontWeight = FontWeight.Bold, fontSize = 15.sp, textAlign = TextAlign.Center)
+        }
+        item {
+            Text(
+                "Run by the gatekeeper's cousin. Totally different guy.",
+                fontSize = 10.sp,
+                textAlign = TextAlign.Center,
+                color = Color.White.copy(alpha = 0.7f),
+            )
         }
         item {
             Text("${state.tokens} tokens", color = Color(0xFFD9CCFF), fontSize = 13.sp)

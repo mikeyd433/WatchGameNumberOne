@@ -97,6 +97,10 @@ object Portal {
         return next to LeaveReport(bonus, tokens, next.settingLoop)
     }
 
+    /** The token stall opens on the street once you've been through the portal. */
+    fun stallOpen(state: GameState): Boolean =
+        state.settingLoop > 0 || state.tokens > 0 || state.globalUpgrades.isNotEmpty()
+
     fun maxTier(upgrade: GlobalUpgrade): Int = when (upgrade) {
         GlobalUpgrade.CHEAPER_GATE -> CHEAPER_GATE_MAX_TIER
         else -> Int.MAX_VALUE

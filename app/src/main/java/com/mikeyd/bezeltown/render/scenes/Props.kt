@@ -46,3 +46,31 @@ fun portalRingModel(): MeshBuilder {
     }
     return b
 }
+
+/** The gatekeeper's "cousin": the same guy in a fake mustache. Nobody mentions it. */
+fun cousinModel(): MeshBuilder = gatekeeperModel().apply {
+    box(0f, 0.715f, 0.11f, 0.17f, 0.04f, 0.02f, srgb(0x3D2817)) // mustache
+    box(-0.09f, 0.7f, 0.11f, 0.04f, 0.05f, 0.02f, srgb(0x3D2817)) // ...with droopy ends
+    box(0.09f, 0.7f, 0.11f, 0.04f, 0.05f, 0.02f, srgb(0x3D2817))
+}
+
+/** A little market stall with a striped awning, built around x = 0 with its front at z = 0. */
+fun stallModel(): MeshBuilder {
+    val b = MeshBuilder()
+    val wood = srgb(0x8A5A34)
+    b.block(0f, 0f, -0.3f, 1.6f, 0.6f, 0.6f, wood) // counter
+    b.box(0f, 0.62f, -0.3f, 1.7f, 0.05f, 0.7f, srgb(0x6B4426)) // counter top
+    for (x in floatArrayOf(-0.78f, 0.78f)) for (z in floatArrayOf(-0.58f, -0.02f)) {
+        b.block(x, 0f, z, 0.06f, 1.7f, 0.06f, wood) // posts
+    }
+    for (k in 0 until 6) { // awning, sloping toward you
+        val color = if (k % 2 == 0) srgb(0x8E5BD6) else srgb(0xF4ECD6)
+        b.box(-0.7f + k * 0.28f, 1.72f, -0.25f, 0.28f, 0.06f, 0.85f, color)
+        b.box(-0.7f + k * 0.28f, 1.62f, 0.18f, 0.28f, 0.16f, 0.04f, color) // scalloped edge
+    }
+    // A little pile of gold tokens and a crate.
+    for (i in 0 until 4) b.prism(-0.42f, 0.645f + i * 0.03f, -0.2f, 0.07f, 0.025f, 8, srgb(0xFFD45C))
+    for (i in 0 until 2) b.prism(-0.24f, 0.645f + i * 0.03f, -0.12f, 0.07f, 0.025f, 8, srgb(0xFFD45C))
+    b.block(0.45f, 0.65f, -0.35f, 0.3f, 0.22f, 0.25f, srgb(0xB0814E))
+    return b
+}

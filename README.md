@@ -40,10 +40,12 @@ Small Town (§6):
   tokens (3 × √(overflow ÷ price)). Money, credits and buildings reset, and you
   start again at the far left. Until
   the Carnival exists the portal loops back to Small Town at 10× the price.
-- **Gatekeeper's stall**: spend tokens on Bonus Rate, Head Start, Cheaper Gate
-  and Offline Storage. Rules live in `core/.../economy/Portal.kt`.
+- **The stall**: after your first trip through the portal, a market stall opens
+  between the arcade cabinet and the Bakery, run by the gatekeeper's "cousin"
+  (him in a fake mustache). Spend tokens there on Bonus Rate, Head Start,
+  Cheaper Gate and Offline Storage. Rules live in `core/.../economy/Portal.kt`.
 
-Not yet: the Carnival, the arcade cabinet, particles, a fancier stall.
+Not yet: the Carnival, the arcade cabinet, particles.
 
 ## Layout
 

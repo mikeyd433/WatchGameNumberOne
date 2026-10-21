@@ -32,6 +32,8 @@ class OverworldScene(engine: Engine, private val walker: Walker) :
 
     private val smoke: List<Int>
     private val pumpWheel: Int
+    private val stall: Int
+    private var stallOpen = false
     private val barberPole: Int
     private val beaconMaterial: MaterialInstance
     private val beacon: Int
@@ -57,7 +59,7 @@ class OverworldScene(engine: Engine, private val walker: Walker) :
         buildingMaterials = List(5) { tintedMaterial() }
         val models = listOf(bakery(), waterTower(), barberShop(), radioStation(), clockTower())
         models.forEachIndexed { i, model ->
-            addMesh(model, buildingMaterials[i]).also { place(it, x = slotX(i + 1), z = BUILDING_Z) }
+            addMesh(model, buildingMaterials[i]).also { place(it, x = buildingX(i), z = BUILDING_Z) }
         }
 
         smoke = List(3) {
@@ -91,7 +93,13 @@ class OverworldScene(engine: Engine, private val walker: Walker) :
         hourHand = addMesh(MeshBuilder().box(0f, 0.08f, 0f, 0.045f, 0.18f, 0.02f, srgb(0x222222)), buildingMaterials[4])
         minuteHand = addMesh(MeshBuilder().box(0f, 0.12f, 0f, 0.03f, 0.26f, 0.02f, srgb(0x222222)), buildingMaterials[4])
 
-        addMesh(gatekeeperModel()).also { place(it, x = slotX(6) - 1.1f, z = -0.2f) }
+        addMesh(gatekeeperModel()).also { place(it, x = slotX(GATE_SLOT) - 1.1f, z = -0.2f) }
+
+        // The token stall and its proprietor, hidden until the first trip through the portal.
+        stall = addGroup()
+        addMesh(stallModel(), parent = stall)
+        addMesh(cousinModel(), parent = stall).also { place(it, x = 0.15f, z = -0.45f) }
+        place(stall, sx = 0f, sy = 0f, sz = 0f)
         portalRing = addMesh(portalRingModel())
         portalSwirl = addMesh(MeshBuilder().disc(0f, 0f, 0f, 0.82f, 0.04f, 7, srgb(0x6B3FA0)))
 
@@ -101,6 +109,11 @@ class OverworldScene(engine: Engine, private val walker: Walker) :
         rightLeg = addMesh(MeshBuilder().box(0f, -0.08f, 0f, 0.06f, 0.16f, 0.07f, srgb(0x2E3A66)), parent = character)
         place(leftLeg, x = -0.045f, y = 0.16f)
         place(rightLeg, x = 0.045f, y = 0.16f)
+    }
+
+    fun setStallOpen(open: Boolean) {
+        stallOpen = open
+        if (open) place(stall, x = slotX(STALL_SLOT), z = BUILDING_Z + 0.4f) else place(stall, sx = 0f, sy = 0f, sz = 0f)
     }
 
     fun setBuildings(newVisuals: List<BuildingVisual>) {
@@ -137,7 +150,7 @@ class OverworldScene(engine: Engine, private val walker: Walker) :
             if (bakery.unlocked && bakery.activity > 0f) {
                 val t = ((time * (0.35f + 0.25f * bakery.activity) + i / 3f) % 1f)
                 val s = 1f - t
-                place(puff, x = slotX(1) + 0.6f + t * 0.35f, y = 2.35f + t * 1.1f, z = BUILDING_Z - 0.2f, sx = s, sy = s, sz = s)
+                place(puff, x = buildingX(0) + 0.6f + t * 0.35f, y = 2.35f + t * 1.1f, z = BUILDING_Z - 0.2f, sx = s, sy = s, sz = s)
             } else {
                 place(puff, sx = 0f, sy = 0f, sz = 0f)
             }
@@ -146,13 +159,13 @@ class OverworldScene(engine: Engine, private val walker: Walker) :
         // Water tower pump wheel.
         val tower = visuals[1]
         val wheelSpeed = if (tower.unlocked) 40f + 200f * tower.activity else 0f
-        place(pumpWheel, x = slotX(2) - 0.75f, y = 0.45f, z = BUILDING_Z + 0.7f, rotZDeg = -time * wheelSpeed)
+        place(pumpWheel, x = buildingX(1) - 0.75f, y = 0.45f, z = BUILDING_Z + 0.7f, rotZDeg = -time * wheelSpeed)
 
         animateBarberRadioClock()
 
         // Portal: slow idle swirl until it opens.
-        place(portalRing, x = slotX(6) + 0.4f, y = 1.25f, z = BUILDING_Z, rotZDeg = time * 12f)
-        place(portalSwirl, x = slotX(6) + 0.4f, y = 1.25f, z = BUILDING_Z, rotZDeg = -time * 30f)
+        place(portalRing, x = slotX(GATE_SLOT) + 0.4f, y = 1.25f, z = BUILDING_Z, rotZDeg = time * 12f)
+        place(portalSwirl, x = slotX(GATE_SLOT) + 0.4f, y = 1.25f, z = BUILDING_Z, rotZDeg = -time * 30f)
     }
 
     private fun animateBarberRadioClock() {
@@ -161,10 +174,10 @@ class OverworldScene(engine: Engine, private val walker: Walker) :
         val clock = visuals[4]
 
         val poleSpin = if (barber.unlocked) time * (90f + 360f * barber.activity) else 0f
-        place(barberPole, x = slotX(3) + 1.15f, y = 0.2f, z = BUILDING_Z + 0.7f, rotYDeg = poleSpin)
+        place(barberPole, x = buildingX(2) + 1.15f, y = 0.2f, z = BUILDING_Z + 0.7f, rotYDeg = poleSpin)
 
         // The beacon blinks faster and the waves ripple quicker the busier the station is.
-        val mastX = slotX(4) + 0.45f
+        val mastX = buildingX(3) + 0.45f
         val beat = 1.2f + 2.5f * radio.activity
         val blinkOn = radio.unlocked && (time * beat) % 1f < 0.5f
         setTint(beaconMaterial, if (!radio.unlocked) SILHOUETTE else if (blinkOn) BEACON_ON else BEACON_OFF)
@@ -184,8 +197,8 @@ class OverworldScene(engine: Engine, private val walker: Walker) :
         val minutes = if (clock.unlocked) time * (6f + 60f * clock.activity) else 10f
         val faceY = 2.2f
         val faceZ = BUILDING_Z + 0.56f
-        place(minuteHand, x = slotX(5), y = faceY, z = faceZ, rotZDeg = -minutes * 6f)
-        place(hourHand, x = slotX(5), y = faceY, z = faceZ + 0.01f, rotZDeg = -(minutes / 60f + 10f) * 30f)
+        place(minuteHand, x = buildingX(4), y = faceY, z = faceZ, rotZDeg = -minutes * 6f)
+        place(hourHand, x = buildingX(4), y = faceY, z = faceZ + 0.01f, rotZDeg = -(minutes / 60f + 10f) * 30f)
     }
 
     /** A thin ring of blocks facing the camera, radius 1, for the radio waves. */
@@ -312,7 +325,12 @@ class OverworldScene(engine: Engine, private val walker: Walker) :
         .box(0f, 0.4f, 0.07f, 0.08f, 0.02f, 0.01f, srgb(0x222222)) // eyes face +Z
 
     companion object {
-        const val SLOT_COUNT = 7
+        // The street, left to right: arcade cabinet, token stall, five buildings, gatekeeper.
+        const val ARCADE_SLOT = 0
+        const val STALL_SLOT = 1
+        const val FIRST_BUILDING_SLOT = 2
+        const val GATE_SLOT = 7
+        const val SLOT_COUNT = 8
         const val SPACING = 3.4f
         const val BUILDING_Z = -1.0f
         const val WALK_Z = 0.8f
@@ -323,5 +341,7 @@ class OverworldScene(engine: Engine, private val walker: Walker) :
 
 
         fun slotX(slot: Int) = slot * SPACING
+
+        fun buildingX(index: Int) = slotX(FIRST_BUILDING_SLOT + index)
     }
 }

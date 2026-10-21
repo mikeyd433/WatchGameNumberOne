@@ -78,6 +78,7 @@ fun BezelTownApp(viewModel: GameViewModel) {
                         viewModel = viewModel,
                         onEnter = { id -> navController.navigate("building/${id.name}") },
                         onGate = { navController.navigate(GATE) },
+                        onStall = { navController.navigate(SHOP) },
                     )
                 }
                 composable(BUILDING) { entry ->
@@ -97,7 +98,6 @@ fun BezelTownApp(viewModel: GameViewModel) {
                         state = live,
                         viewModel = viewModel,
                         onLeft = { navController.popBackStack() },
-                        onShop = { navController.navigate(SHOP) },
                     )
                 }
                 composable(SHOP) {

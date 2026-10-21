@@ -19,6 +19,7 @@ import com.mikeyd.bezeltown.core.model.UpgradeTrack
 import com.mikeyd.bezeltown.core.overworld.Walker
 import com.mikeyd.bezeltown.data.SaveRepository
 import com.mikeyd.bezeltown.input.Haptics
+import com.mikeyd.bezeltown.render.scenes.OverworldScene
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -48,7 +49,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     val haptics = Haptics(app)
 
     /** Overworld position survives trips into buildings. Starts at the Bakery. */
-    val walker = Walker(slotCount = 7, startSlot = 1)
+    val walker = Walker(slotCount = OverworldScene.SLOT_COUNT, startSlot = OverworldScene.FIRST_BUILDING_SLOT)
 
     init {
         viewModelScope.launch { _state.value = repository.load() }
@@ -90,7 +91,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         val (next, report) = Portal.leave(current, setting(current)) ?: return false
         _state.value = next
         _arrival.value = report
-        walker.teleport(0)
+        walker.teleport(OverworldScene.ARCADE_SLOT)
         save()
         return true
     }

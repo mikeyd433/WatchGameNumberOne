@@ -55,8 +55,10 @@ import com.mikeyd.bezeltown.render.PixelFont
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
-private const val ARCADE_SLOT = 0
-private const val GATE_SLOT = 6
+private const val ARCADE_SLOT = OverworldScene.ARCADE_SLOT
+private const val STALL_SLOT = OverworldScene.STALL_SLOT
+private const val FIRST_BUILDING_SLOT = OverworldScene.FIRST_BUILDING_SLOT
+private const val GATE_SLOT = OverworldScene.GATE_SLOT
 
 @OptIn(ExperimentalWearFoundationApi::class)
 @Composable
@@ -65,6 +67,7 @@ fun OverworldScreen(
     viewModel: GameViewModel,
     onEnter: (BuildingId) -> Unit,
     onGate: () -> Unit,
+    onStall: () -> Unit,
 ) {
     val context = LocalContext.current
     val setting = viewModel.setting(state)
@@ -92,13 +95,18 @@ fun OverworldScreen(
         BuildingVisual(unlocked = b.unlocked, activity = (rate / (def.incomePerLevel * 10).coerceAtLeast(1e-9)).toFloat().coerceIn(0f, 1f))
     }
     val signs = (0 until OverworldScene.SLOT_COUNT).map { signFor(it, state, viewModel) }
-    SideEffect { scene?.setBuildings(visuals) }
+    val stallOpen = Portal.stallOpen(state)
+    SideEffect {
+        scene?.setBuildings(visuals)
+        scene?.setStallOpen(stallOpen)
+    }
 
     // The tap detector is set up once and keeps whichever handler it first saw, so
     // the handler must read the game through these holders, never capture it.
     val currentState by rememberUpdatedState(state)
     val currentOnEnter by rememberUpdatedState(onEnter)
     val currentOnGate by rememberUpdatedState(onGate)
+    val currentOnStall by rememberUpdatedState(onStall)
 
     fun onTap() {
         val slot = walker.doorSlot ?: return
@@ -107,8 +115,9 @@ fun OverworldScreen(
         when (slot) {
             ARCADE_SLOT -> message = "Arcade: coming soon"
             GATE_SLOT -> currentOnGate()
+            STALL_SLOT -> if (Portal.stallOpen(now)) currentOnStall()
             else -> {
-                val def = here.buildings.getOrNull(slot - 1) ?: return
+                val def = here.buildings.getOrNull(slot - FIRST_BUILDING_SLOT) ?: return
                 when {
                     now.building(def.id).unlocked -> currentOnEnter(def.id)
                     def.microgame == null -> message = "${def.name}: under construction"
@@ -149,6 +158,7 @@ fun OverworldScreen(
             createScene = { engine ->
                 OverworldScene(engine, walker).also { created ->
                     created.setBuildings(visuals)
+                    created.setStallOpen(stallOpen)
                     created.frameListener = { dt ->
                         walker.update(dt)?.let(::onWalkEvent)
                         val slot = walker.doorSlot ?: -1
@@ -161,7 +171,7 @@ fun OverworldScreen(
 
         // The name of the door you're standing at floats over it, clear of the money counter.
         FloatingName(
-            lines = signs.getOrNull(doorSlot),
+            lines = signs.getOrNull(doorSlot)?.takeIf { it.isNotEmpty() },
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .padding(top = 38.dp)
@@ -258,12 +268,17 @@ private fun signFor(slot: Int, state: GameState, viewModel: GameViewModel): List
     val setting = viewModel.setting(state)
     return when (slot) {
         ARCADE_SLOT -> listOf(SignLine("ARCADE", SIGN_NAME))
+        STALL_SLOT -> if (Portal.stallOpen(state)) {
+            listOf(SignLine("STALL", SIGN_NAME), SignLine("${state.tokens} TOKENS", SIGN_PORTAL))
+        } else {
+            emptyList()
+        }
         GATE_SLOT -> listOf(
             SignLine("PORTAL", SIGN_PORTAL),
             SignLine("\$${BigNumber.format(Portal.threshold(state, setting))}", SIGN_PRICE),
         )
         else -> {
-            val def = setting.buildings[slot - 1]
+            val def = setting.buildings[slot - FIRST_BUILDING_SLOT]
             val building = state.building(def.id)
             val name = SignLine(def.name.uppercase(), SIGN_NAME)
             when {
@@ -286,8 +301,8 @@ private const val SIGN_SOON = 0x9AA8B8
 
 private fun hintFor(slot: Int, state: GameState, viewModel: GameViewModel): String? {
     if (slot == GATE_SLOT) return "Tap to talk to the gatekeeper"
-    if (slot !in 1..5) return null
-    val def = viewModel.setting(state).buildings[slot - 1]
+    if (slot == STALL_SLOT) return if (Portal.stallOpen(state)) "Tap to shop" else null
+    val def = viewModel.setting(state).buildings.getOrNull(slot - FIRST_BUILDING_SLOT) ?: return null
     val building = state.building(def.id)
     return when {
         building.unlocked -> "Tap to enter"

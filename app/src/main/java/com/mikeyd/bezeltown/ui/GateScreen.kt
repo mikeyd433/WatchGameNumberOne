@@ -5,7 +5,6 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -35,8 +34,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.wear.compose.foundation.ExperimentalWearFoundationApi
 import androidx.wear.compose.foundation.rememberActiveFocusRequester
-import androidx.wear.compose.material.ChipDefaults
-import androidx.wear.compose.material.CompactChip
 import androidx.wear.compose.material.Text
 import com.mikeyd.bezeltown.GameViewModel
 import com.mikeyd.bezeltown.core.economy.Portal
@@ -57,7 +54,7 @@ import kotlin.math.sqrt
  */
 @OptIn(ExperimentalWearFoundationApi::class)
 @Composable
-fun GateScreen(state: GameState, viewModel: GameViewModel, onLeft: () -> Unit, onShop: () -> Unit) {
+fun GateScreen(state: GameState, viewModel: GameViewModel, onLeft: () -> Unit) {
     val context = LocalContext.current
     val setting = viewModel.setting(state)
     val haptics = viewModel.haptics
@@ -146,8 +143,8 @@ fun GateScreen(state: GameState, viewModel: GameViewModel, onLeft: () -> Unit, o
 
         TopCurvedText("\$${BigNumber.format(money)}", Gold)
 
-        // The speech bubble and status sit together up in the sky and the Shop button at
-        // the bottom, leaving the middle of the screen to the gatekeeper and his portal.
+        // The speech bubble and status sit together up in the sky, leaving the middle of
+        // the screen to the gatekeeper and his portal.
         Column(
             modifier = Modifier.fillMaxSize().padding(top = 26.dp, bottom = 30.dp, start = 30.dp, end = 30.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -188,15 +185,6 @@ fun GateScreen(state: GameState, viewModel: GameViewModel, onLeft: () -> Unit, o
                         PaidBar(fraction = (paid / max(money, 1.0)).toFloat())
                     }
                 }
-            }
-            Spacer(Modifier.weight(1f))
-            if (!stepping && !paidUp) {
-                CompactChip(
-                    modifier = Modifier.padding(top = 3.dp),
-                    onClick = onShop,
-                    label = { Text("Shop · ${state.tokens} tk", fontSize = 11.sp) },
-                    colors = ChipDefaults.secondaryChipColors(),
-                )
             }
         }
 

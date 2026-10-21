@@ -123,6 +123,12 @@ class PortalTest {
         assertTrue("took $detents detents", detents in 40..80)
     }
 
+    @Test fun stallOpensAfterTheFirstTrip() {
+        assertFalse(Portal.stallOpen(Settings.newGame()))
+        val (after, _) = Portal.leave(allUnlocked(500_000.0), town)!!
+        assertTrue(Portal.stallOpen(after))
+    }
+
     @Test fun oldSavesLoadWithoutLoopField() {
         val full = SaveCodec.encode(Settings.newGame())
         val json = full.replace("\"settingLoop\":0,", "")
