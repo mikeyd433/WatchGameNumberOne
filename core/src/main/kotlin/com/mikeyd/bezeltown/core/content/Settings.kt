@@ -45,7 +45,7 @@ data class SettingDef(
 object Settings {
     val SMALL_TOWN = SettingDef(
         name = "Small Town",
-        portalThreshold = 100_000.0,
+        portalThreshold = 500_000.0,
         buildings = listOf(
             BuildingDef(
                 id = BuildingId.BAKERY,

@@ -42,6 +42,7 @@ import androidx.wear.compose.foundation.rememberActiveFocusRequester
 import androidx.wear.compose.material.Text
 import com.mikeyd.bezeltown.GameViewModel
 import com.mikeyd.bezeltown.core.economy.Economy
+import com.mikeyd.bezeltown.core.economy.Portal
 import com.mikeyd.bezeltown.core.format.BigNumber
 import com.mikeyd.bezeltown.core.model.BuildingId
 import com.mikeyd.bezeltown.core.model.GameState
@@ -103,7 +104,7 @@ fun OverworldScreen(
         val here = viewModel.setting(now)
         when (slot) {
             ARCADE_SLOT -> message = "Arcade: coming soon"
-            GATE_SLOT -> message = "\"Portal opens at \$${BigNumber.format(here.portalThreshold)}! What a deal!\""
+            GATE_SLOT -> message = "\"Portal opens at \$${BigNumber.format(Portal.threshold(now, here))}! What a deal!\""
             else -> {
                 val def = here.buildings.getOrNull(slot - 1) ?: return
                 when {
@@ -257,7 +258,7 @@ private fun signFor(slot: Int, state: GameState, viewModel: GameViewModel): List
         ARCADE_SLOT -> listOf(SignLine("ARCADE", SIGN_NAME))
         GATE_SLOT -> listOf(
             SignLine("PORTAL", SIGN_PORTAL),
-            SignLine("\$${BigNumber.format(setting.portalThreshold)}", SIGN_PRICE),
+            SignLine("\$${BigNumber.format(Portal.threshold(state, setting))}", SIGN_PRICE),
         )
         else -> {
             val def = setting.buildings[slot - 1]

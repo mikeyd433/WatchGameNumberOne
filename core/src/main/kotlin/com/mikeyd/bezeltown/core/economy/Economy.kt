@@ -4,6 +4,7 @@ import com.mikeyd.bezeltown.core.content.BuildingDef
 import com.mikeyd.bezeltown.core.content.SettingDef
 import com.mikeyd.bezeltown.core.model.BuildingId
 import com.mikeyd.bezeltown.core.model.GameState
+import com.mikeyd.bezeltown.core.model.GlobalUpgrade
 import com.mikeyd.bezeltown.core.model.MicrogameId
 import com.mikeyd.bezeltown.core.model.UpgradeTrack
 import kotlin.math.max
@@ -45,8 +46,12 @@ object Economy {
         return def.incomePerLevel * automationLevel * 1.1.pow(automationLevel - 1) * (1.0 + totalBonus)
     }
 
-    /** Hours of output a building can bank while the player is away. */
-    fun storageHours(def: BuildingDef, storageLevel: Int): Double = def.storageBaseHours * (1 + storageLevel)
+    /**
+     * Hours of output a building can bank while the player is away. The Offline
+     * Storage global upgrade adds 50% per tier on top.
+     */
+    fun storageHours(def: BuildingDef, storageLevel: Int, offlineStorageTier: Int = 0): Double =
+        def.storageBaseHours * (1 + storageLevel) * (1 + 0.5 * offlineStorageTier)
 
     fun upgradeCost(def: BuildingDef, track: UpgradeTrack, level: Int): Long =
         def.costs.getValue(track).at(level)
@@ -71,12 +76,13 @@ object Economy {
         if (seconds <= 0.0) return state to AwayReport(0.0, 0.0, storageFilled = false)
         var earned = 0.0
         var filled = false
+        val offlineTier = state.globalUpgrades[GlobalUpgrade.OFFLINE_STORAGE] ?: 0
         for (b in state.setting.buildings) {
             if (!b.unlocked) continue
             val def = setting.building(b.id)
             val rate = incomePerSecond(def, b.automationLevel, state.totalBonus)
             if (rate <= 0.0) continue
-            val capSeconds = storageHours(def, b.storageLevel) * 3600.0
+            val capSeconds = storageHours(def, b.storageLevel, offlineTier) * 3600.0
             if (seconds > capSeconds) filled = true
             earned += rate * minOf(seconds, capSeconds)
         }
@@ -85,7 +91,7 @@ object Economy {
     }
 
     fun portalProgress(state: GameState, setting: SettingDef): Double =
-        (state.setting.money / setting.portalThreshold).coerceIn(0.0, 1.0)
+        (state.setting.money / Portal.threshold(state, setting)).coerceIn(0.0, 1.0)
 
     fun canUnlock(state: GameState, setting: SettingDef, id: BuildingId): Boolean {
         val def = setting.building(id)

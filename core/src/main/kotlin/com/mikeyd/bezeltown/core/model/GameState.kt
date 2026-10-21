@@ -22,6 +22,8 @@ data class GameState(
     val tokens: Long = 0,
     val globalUpgrades: Map<GlobalUpgrade, Int> = emptyMap(),
     val personalBests: Map<MicrogameId, Long> = emptyMap(),
+    /** How many times the current setting has been looped through the portal (0 = first visit). */
+    val settingLoop: Int = 0,
     /** Epoch millis of the last save. */
     val lastSeen: Long = 0,
     val setting: SettingState,
