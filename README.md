@@ -45,7 +45,12 @@ Small Town (§6):
   (him in a fake mustache). Spend tokens there on Bonus Rate, Head Start,
   Cheaper Gate and Offline Storage. Rules live in `core/.../economy/Portal.kt`.
 
-Not yet: the Carnival, the arcade cabinet, particles.
+- **Arcade cabinet** (§11): at the far left. Replay any game you've played as
+  free play (no credits, only your best counts); unplayed games show as ???.
+  Its floating name shows the total of all your bests. A new best, anywhere,
+  sets off a confetti burst.
+
+Not yet: the Carnival, the full particle system (coin jar, flour, spray).
 
 ## Layout
 

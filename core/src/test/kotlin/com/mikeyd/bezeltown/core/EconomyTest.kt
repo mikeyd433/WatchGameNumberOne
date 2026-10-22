@@ -42,6 +42,18 @@ class EconomyTest {
         assertEquals(80L, outcome.state.personalBests[MicrogameId.KNEAD])
     }
 
+    @Test fun firstPlayCountsAsPlayedEvenAtZero() {
+        val state = Settings.newGame()
+        val outcome = Economy.recordPlay(state, town, BuildingId.BAKERY, MicrogameId.KNEAD, 0, PlayMode.STORY)
+        assertEquals(0L, outcome.state.personalBests[MicrogameId.KNEAD])
+        assertFalse(outcome.newBest)
+        val better = Economy.recordPlay(outcome.state, town, BuildingId.BAKERY, MicrogameId.KNEAD, 40, PlayMode.ARCADE)
+        assertTrue(better.newBest)
+        val worse = Economy.recordPlay(better.state, town, BuildingId.BAKERY, MicrogameId.KNEAD, 30, PlayMode.ARCADE)
+        assertFalse(worse.newBest)
+        assertEquals(40L, worse.state.personalBests[MicrogameId.KNEAD])
+    }
+
     @Test fun skillRaisesCreditsPerPlay() {
         val def = town.building(BuildingId.BAKERY)
         assertEquals(8L, Economy.creditsForScore(def, 100, 0))

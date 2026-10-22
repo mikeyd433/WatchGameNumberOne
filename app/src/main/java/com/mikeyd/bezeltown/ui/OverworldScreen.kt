@@ -7,9 +7,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.height
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.withTransform
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -68,6 +66,7 @@ fun OverworldScreen(
     onEnter: (BuildingId) -> Unit,
     onGate: () -> Unit,
     onStall: () -> Unit,
+    onArcade: () -> Unit,
 ) {
     val context = LocalContext.current
     val setting = viewModel.setting(state)
@@ -107,13 +106,14 @@ fun OverworldScreen(
     val currentOnEnter by rememberUpdatedState(onEnter)
     val currentOnGate by rememberUpdatedState(onGate)
     val currentOnStall by rememberUpdatedState(onStall)
+    val currentOnArcade by rememberUpdatedState(onArcade)
 
     fun onTap() {
         val slot = walker.doorSlot ?: return
         val now = currentState
         val here = viewModel.setting(now)
         when (slot) {
-            ARCADE_SLOT -> message = "Arcade: coming soon"
+            ARCADE_SLOT -> currentOnArcade()
             GATE_SLOT -> currentOnGate()
             STALL_SLOT -> if (Portal.stallOpen(now)) currentOnStall()
             else -> {
@@ -230,7 +230,6 @@ private fun FloatingName(lines: List<SignLine>?, modifier: Modifier = Modifier) 
         val widest = content.maxOf { PixelFont.width(it.text) }.coerceAtLeast(1)
         // Fit the widest line, but never bigger than ~4dp per font pixel.
         val px = minOf(size.width / widest, size.height / textRows, 4.dp.toPx())
-        val depth = (px * 0.45f).coerceAtLeast(1f)
         val blockHeight = textRows * px
 
         // Rise up from below and grow into place.
@@ -242,22 +241,7 @@ private fun FloatingName(lines: List<SignLine>?, modifier: Modifier = Modifier) 
             content.forEachIndexed { row, line ->
                 val left = (size.width - PixelFont.width(line.text) * px) / 2f
                 val top = (size.height - blockHeight) / 2f + row * (PixelFont.HEIGHT + gap) * px
-                val face = Color(0xFF000000.toInt() or line.color)
-                val side = lerp(face, Color.Black, 0.55f)
-                val cell = Size(px + 0.5f, px + 0.5f)
-                // Shadow, then the extruded sides (down-right), then the front face.
-                PixelFont.forEachPixel(line.text) { x, y ->
-                    drawRect(Color.Black.copy(alpha = 0.35f), Offset(left + x * px + depth * 2.2f, top + y * px + depth * 2.6f), cell)
-                }
-                for (step in 3 downTo 1) {
-                    val d = depth * step / 3f
-                    PixelFont.forEachPixel(line.text) { x, y ->
-                        drawRect(side, Offset(left + x * px + d, top + y * px + d), cell)
-                    }
-                }
-                PixelFont.forEachPixel(line.text) { x, y ->
-                    drawRect(face, Offset(left + x * px, top + y * px), cell)
-                }
+                drawPixelText(line.text, left, top, px, Color(0xFF000000.toInt() or line.color))
             }
         }
     }
@@ -267,7 +251,7 @@ private fun FloatingName(lines: List<SignLine>?, modifier: Modifier = Modifier) 
 private fun signFor(slot: Int, state: GameState, viewModel: GameViewModel): List<SignLine> {
     val setting = viewModel.setting(state)
     return when (slot) {
-        ARCADE_SLOT -> listOf(SignLine("ARCADE", SIGN_NAME))
+        ARCADE_SLOT -> listOf(SignLine("ARCADE", SIGN_NAME), SignLine("HI ${totalBest(state)}", SIGN_ARCADE))
         STALL_SLOT -> if (Portal.stallOpen(state)) {
             listOf(SignLine("STALL", SIGN_NAME), SignLine("${state.tokens} TOKENS", SIGN_PORTAL))
         } else {
@@ -298,9 +282,11 @@ private const val SIGN_PORTAL = 0xD9CCFF
 private const val SIGN_PRICE = 0xFFD45C
 private const val SIGN_AFFORD = 0x7CFFB2
 private const val SIGN_SOON = 0x9AA8B8
+private const val SIGN_ARCADE = 0x4FE3FF
 
 private fun hintFor(slot: Int, state: GameState, viewModel: GameViewModel): String? {
     if (slot == GATE_SLOT) return "Tap to talk to the gatekeeper"
+    if (slot == ARCADE_SLOT) return "Tap to play the arcade"
     if (slot == STALL_SLOT) return if (Portal.stallOpen(state)) "Tap to shop" else null
     val def = viewModel.setting(state).buildings.getOrNull(slot - FIRST_BUILDING_SLOT) ?: return null
     val building = state.building(def.id)

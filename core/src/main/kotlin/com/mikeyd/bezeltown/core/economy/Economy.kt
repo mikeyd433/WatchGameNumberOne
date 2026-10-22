@@ -124,9 +124,11 @@ object Economy {
         score: Int,
         mode: PlayMode,
     ): PlayOutcome {
-        val best = state.personalBests[game] ?: 0L
-        val newBest = score > best
-        var next = if (newBest) state.copy(personalBests = state.personalBests + (game to score.toLong())) else state
+        // A game counts as played (and unlocks in the arcade) on its first try, even scoring 0.
+        val best = state.personalBests[game]
+        val newBest = if (best == null) score > 0 else score > best
+        val record = best == null || score > best
+        var next = if (record) state.copy(personalBests = state.personalBests + (game to score.toLong())) else state
         var earned = 0L
         if (mode == PlayMode.STORY) {
             val building = state.building(id)

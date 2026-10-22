@@ -46,6 +46,8 @@ private const val UPGRADES = "upgrades/{id}"
 private const val GATE = "gate"
 private const val TITLE_MILLIS = 1500L
 private const val SHOP = "shop"
+private const val ARCADE = "arcade"
+private const val ARCADE_PLAY = "arcade/{id}"
 
 @Composable
 fun BezelTownApp(viewModel: GameViewModel) {
@@ -96,6 +98,7 @@ fun BezelTownApp(viewModel: GameViewModel) {
                         onEnter = { id -> navController.navigate("building/${id.name}") },
                         onGate = { navController.navigate(GATE) },
                         onStall = { navController.navigate(SHOP) },
+                        onArcade = { navController.navigate(ARCADE) },
                     )
                 }
                 composable(BUILDING) { entry ->
@@ -115,6 +118,22 @@ fun BezelTownApp(viewModel: GameViewModel) {
                         state = live,
                         viewModel = viewModel,
                         onLeft = { navController.popBackStack() },
+                    )
+                }
+                composable(ARCADE) {
+                    val live = viewModel.liveState() ?: return@composable
+                    ArcadeScreen(state = live, viewModel = viewModel, onPlay = { id -> navController.navigate("arcade/${id.name}") })
+                }
+                composable(ARCADE_PLAY) { entry ->
+                    val id = BuildingId.valueOf(entry.arguments?.getString("id") ?: return@composable)
+                    val live = viewModel.liveState() ?: return@composable
+                    BuildingScreen(
+                        id = id,
+                        state = live,
+                        viewModel = viewModel,
+                        swipeToDismissState = swipeToDismissState,
+                        onUpgrades = {},
+                        arcade = true,
                     )
                 }
                 composable(SHOP) {

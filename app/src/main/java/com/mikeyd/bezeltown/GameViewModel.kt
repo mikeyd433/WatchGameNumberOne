@@ -122,11 +122,12 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     fun upgrade(id: BuildingId, track: UpgradeTrack): Boolean = change { Economy.upgrade(it, setting(it), id, track) }
 
-    fun recordPlay(id: BuildingId, score: Int): PlayOutcome? {
+    /** Records a finished game. Arcade plays only count toward bests; story plays earn credits. */
+    fun recordPlay(id: BuildingId, score: Int, mode: PlayMode = PlayMode.STORY): PlayOutcome? {
         val current = _state.value ?: return null
         val def = setting(current).building(id)
         val game = def.microgame ?: return null
-        val outcome = Economy.recordPlay(current, setting(current), id, game, score, PlayMode.STORY)
+        val outcome = Economy.recordPlay(current, setting(current), id, game, score, mode)
         _state.value = outcome.state
         save()
         return outcome

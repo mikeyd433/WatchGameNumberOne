@@ -43,6 +43,7 @@ import androidx.wear.compose.material.CompactChip
 import androidx.wear.compose.material.ChipDefaults
 import androidx.wear.compose.material.Text
 import com.mikeyd.bezeltown.GameViewModel
+import com.mikeyd.bezeltown.core.economy.PlayMode
 import com.mikeyd.bezeltown.core.economy.PlayOutcome
 import com.mikeyd.bezeltown.core.format.BigNumber
 import com.mikeyd.bezeltown.core.microgame.BarberGame
@@ -95,6 +96,9 @@ private fun newGame(game: MicrogameId): Microgame = when (game) {
 /**
  * A building's screen: lobby with its credits and a Play button, then the
  * microgame itself, then the result. The game runs on the 3D scene's frame loop.
+ *
+ * With [arcade] set it's the arcade cabinet's free play: same game, but it only
+ * counts toward your best, with no credits and no upgrades.
  */
 @OptIn(ExperimentalWearFoundationApi::class)
 @Composable
@@ -104,6 +108,7 @@ fun BuildingScreen(
     viewModel: GameViewModel,
     swipeToDismissState: SwipeToDismissBoxState,
     onUpgrades: () -> Unit,
+    arcade: Boolean = false,
 ) {
     val context = LocalContext.current
     val setting = viewModel.setting(state)
@@ -178,8 +183,8 @@ fun BuildingScreen(
                     wasAligned = g.aligned
                 }
                 if (g.finished) {
-                    outcome = viewModel.recordPlay(id, g.score)
-                    if (g.succeeded) haptics.success() else haptics.failure()
+                    outcome = viewModel.recordPlay(id, g.score, if (arcade) PlayMode.ARCADE else PlayMode.STORY)
+                    if (g.succeeded || outcome?.newBest == true) haptics.success() else haptics.failure()
                     resultAge = 0f
                     phase = Phase.RESULT
                 }
@@ -267,11 +272,11 @@ fun BuildingScreen(
 
         when (phase) {
             Phase.LOBBY -> Lobby(
-                title = "${def.name} · ${BigNumber.format(building.credits.toDouble())} cr",
+                title = if (arcade) "FREE PLAY" else "${def.name} · ${BigNumber.format(building.credits.toDouble())} cr",
                 hint = copy.hint,
                 best = state.personalBests[microgame],
                 onPlay = ::start,
-                onUpgrades = onUpgrades,
+                onUpgrades = if (arcade) null else onUpgrades,
             )
             Phase.COUNTDOWN -> Text(
                 text = copy.verb,
@@ -288,7 +293,8 @@ fun BuildingScreen(
                 Result(
                     title = if (g?.succeeded == true) copy.win else copy.lose,
                     score = g?.score ?: 0,
-                    credits = result?.creditsEarned ?: 0,
+                    credits = if (arcade) null else result?.creditsEarned ?: 0,
+                    best = state.personalBests[microgame] ?: 0,
                     newBest = result?.newBest == true,
                     modifier = Modifier.pointerInput(Unit) {
                         detectTapGestures {
@@ -502,7 +508,7 @@ private fun Lobby(
     hint: String,
     best: Long?,
     onPlay: () -> Unit,
-    onUpgrades: () -> Unit,
+    onUpgrades: (() -> Unit)?,
 ) {
     TopCurvedText(title, Gold)
     Column(
@@ -527,12 +533,14 @@ private fun Lobby(
         ) {
             Text("PLAY", fontWeight = FontWeight.Black, fontSize = 16.sp)
         }
-        Spacer(Modifier.height(8.dp))
-        CompactChip(
-            onClick = onUpgrades,
-            label = { Text("Upgrades") },
-            colors = ChipDefaults.secondaryChipColors(),
-        )
+        if (onUpgrades != null) {
+            Spacer(Modifier.height(8.dp))
+            CompactChip(
+                onClick = onUpgrades,
+                label = { Text("Upgrades") },
+                colors = ChipDefaults.secondaryChipColors(),
+            )
+        }
         if (best != null) {
             Text("Best $best", fontSize = 10.sp, color = Color.White.copy(alpha = 0.8f))
         }
@@ -543,21 +551,30 @@ private fun Lobby(
 private fun Result(
     title: String,
     score: Int,
-    credits: Long,
+    /** Null in the arcade, where plays don't earn credits. */
+    credits: Long?,
+    best: Long,
     newBest: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier.fillMaxSize().background(Ink.copy(alpha = 0.55f)),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Text(title, fontSize = 26.sp, fontWeight = FontWeight.Black, color = Gold)
-        Text("Score $score", fontSize = 16.sp)
-        Text("+$credits credits", fontSize = 16.sp, color = Good)
-        if (newBest) Text("New best!", fontSize = 12.sp, color = Gold)
-        Spacer(Modifier.height(6.dp))
-        Text("Tap to continue", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
+    Box(modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier.fillMaxSize().background(Ink.copy(alpha = 0.55f)),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Text(title, fontSize = 26.sp, fontWeight = FontWeight.Black, color = Gold)
+            Text("Score $score", fontSize = 16.sp)
+            if (credits != null) Text("+$credits credits", fontSize = 16.sp, color = Good)
+            if (newBest) {
+                Text("NEW BEST!", fontSize = 14.sp, fontWeight = FontWeight.Black, color = Gold)
+            } else {
+                Text("Best $best", fontSize = 12.sp, color = Color.White.copy(alpha = 0.8f))
+            }
+            Spacer(Modifier.height(6.dp))
+            Text("Tap to continue", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
+        }
+        if (newBest) ConfettiBurst()
     }
 }
 

@@ -32,6 +32,8 @@ class OverworldScene(engine: Engine, private val walker: Walker) :
 
     private val smoke: List<Int>
     private val pumpWheel: Int
+    private val arcadeScreen: Int
+    private val arcadeScreenMaterial: MaterialInstance
     private val stall: Int
     private var stallOpen = false
     private val barberPole: Int
@@ -54,7 +56,11 @@ class OverworldScene(engine: Engine, private val walker: Walker) :
 
     init {
         addMesh(scenery())
-        addMesh(arcadeCabinet()).also { place(it, x = slotX(0), z = BUILDING_Z) }
+        addMesh(arcadeCabinet()).also { place(it, x = slotX(ARCADE_SLOT), z = BUILDING_Z) }
+        arcadeScreenMaterial = tintedMaterial(ARCADE_GLOW)
+        arcadeScreen = addMesh(MeshBuilder().box(0f, 0f, 0f, 0.4f, 0.28f, 0.02f, srgb(0xFFFFFF)), arcadeScreenMaterial).also {
+            place(it, x = slotX(ARCADE_SLOT), y = 0.95f, z = BUILDING_Z + 0.345f)
+        }
 
         buildingMaterials = List(5) { tintedMaterial() }
         val models = listOf(bakery(), waterTower(), barberShop(), radioStation(), clockTower())
@@ -163,6 +169,10 @@ class OverworldScene(engine: Engine, private val walker: Walker) :
 
         animateBarberRadioClock()
 
+        // The arcade cabinet's screen flickers between attract-mode colors.
+        val glow = 0.75f + 0.25f * sin(time * 5f) * sin(time * 1.3f)
+        setTint(arcadeScreenMaterial, ARCADE_GLOW.lerp(ARCADE_GLOW_ALT, (sin(time * 0.8f) + 1f) / 2f).scaled(glow))
+
         // Portal: slow idle swirl until it opens.
         place(portalRing, x = slotX(GATE_SLOT) + 0.4f, y = 1.25f, z = BUILDING_Z, rotZDeg = time * 12f)
         place(portalSwirl, x = slotX(GATE_SLOT) + 0.4f, y = 1.25f, z = BUILDING_Z, rotZDeg = -time * 30f)
@@ -250,7 +260,6 @@ class OverworldScene(engine: Engine, private val walker: Walker) :
     private fun arcadeCabinet() = MeshBuilder()
         .block(0f, 0f, 0f, 0.7f, 1.35f, 0.6f, srgb(0x5B3C9E))
         .box(0f, 0.95f, 0.31f, 0.52f, 0.4f, 0.04f, srgb(0x1C2541))
-        .box(0f, 0.95f, 0.335f, 0.4f, 0.28f, 0.02f, srgb(0x3DDC97))
         .block(0f, 1.35f, 0f, 0.74f, 0.2f, 0.64f, srgb(0xF2C14E))
         .box(0f, 0.62f, 0.36f, 0.7f, 0.08f, 0.2f, srgb(0x2B2B2B))
         .box(-0.12f, 0.69f, 0.38f, 0.06f, 0.06f, 0.06f, srgb(0xE84855))
@@ -338,6 +347,8 @@ class OverworldScene(engine: Engine, private val walker: Walker) :
         private val BEACON_ON = srgb(0xFF3B3B)
         private val BEACON_OFF = srgb(0x5A1A1E)
         private val WAVE = srgb(0xBFE8FF)
+        private val ARCADE_GLOW = srgb(0x3DDC97)
+        private val ARCADE_GLOW_ALT = srgb(0x4FE3FF)
 
 
         fun slotX(slot: Int) = slot * SPACING
